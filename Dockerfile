@@ -8,6 +8,11 @@ RUN npm ci
 
 # Build app
 COPY . .
+
+# Vite build-time environment
+ARG VITE_GEMINI_API_KEY
+ENV VITE_GEMINI_API_KEY=$VITE_GEMINI_API_KEY
+
 RUN npm run build
 
 # Runtime stage
