@@ -1,0 +1,5 @@
+{
+  "name": "Générateur de Cartes Munchkin",
+  "description": "Créez des cartes de jeu personnalisées avec des illustrations générées par l'IA en utilisant le modèle Gemini Nano Banana.",
+  "requestFramePermissions": []
+}
