@@ -8,6 +8,8 @@ const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
  * @returns The base64 encoded image string or throws an error.
  */
 export const generateCardArt = async (prompt: string): Promise<string> => {
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  console.log("REM vs Elie", apiKey);
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image', // Nano Banana mapping
