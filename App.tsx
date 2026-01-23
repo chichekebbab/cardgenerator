@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import CardForm from './components/CardForm';
 import CardPreview from './components/CardPreview';
 import DeckStats from './components/DeckStats';
+import CardGallery from './components/CardGallery';
 import { CardData, INITIAL_CARD_DATA } from './types';
 import { saveCardToSheet, fetchCardsFromSheet } from './services/sheetService';
 
@@ -144,7 +145,8 @@ const App: React.FC = () => {
   const [savedCards, setSavedCards] = useState<CardData[]>([]);
   const [scriptUrl, setScriptUrl] = useState<string>("");
   const [showSettings, setShowSettings] = useState(false);
-  const [activeTab, setActiveTab] = useState<'config' | 'code'>('config'); // Nouvel état pour les onglets
+  const [activeTab, setActiveTab] = useState<'config' | 'code'>('config'); // Nouvel état pour les onglets modal settings
+  const [activeView, setActiveView] = useState<'editor' | 'gallery'>('editor'); // Nouvel état pour la navigation principale
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingList, setIsLoadingList] = useState(false);
   const [configError, setConfigError] = useState<string | null>(null);
@@ -211,10 +213,12 @@ const App: React.FC = () => {
 
   const handleNewCard = () => {
     setCardData({ ...INITIAL_CARD_DATA, id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString() });
+    setActiveView('editor'); // Switch to editor when creating new card
   };
 
   const handleSelectCard = (card: CardData) => {
       setCardData(card);
+      setActiveView('editor'); // Switch to editor when selecting a card
       // Scroll to top on mobile
       window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -227,25 +231,61 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-stone-100 font-sans text-gray-900 flex flex-col">
       {/* Header */}
-      <header className="bg-amber-900 text-amber-50 p-4 shadow-lg sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-             <div className="text-3xl">🗡️</div>
-             <div>
-                <h1 className="text-xl font-bold tracking-wider">MunchkinGen</h1>
-                <p className="text-xs text-amber-200 opacity-80">Propulsé par Gemini Nano Banana</p>
-             </div>
+      <header className="bg-amber-900 text-amber-50 shadow-lg sticky top-0 z-30">
+        <div className="max-w-7xl mx-auto">
+          {/* Top row: Logo and actions */}
+          <div className="flex items-center justify-between p-4 pb-2">
+            <div className="flex items-center gap-3">
+               <div className="text-3xl">🗡️</div>
+               <div>
+                  <h1 className="text-xl font-bold tracking-wider">MunchkinGen</h1>
+                  <p className="text-xs text-amber-200 opacity-80">Propulsé par Gemini Nano Banana</p>
+               </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <button 
+                  onClick={() => setShowSettings(!showSettings)}
+                  className={`transition-colors ${configError ? 'text-red-400 animate-pulse' : 'text-amber-200 hover:text-white'}`}
+                  title="Configuration Base de Données"
+              >
+                  ⚙️
+              </button>
+              <a href="https://github.com/tidoe/MunchkinEditor" target="_blank" className="text-sm text-amber-300 hover:text-white underline hidden sm:inline">GitHub</a>
+            </div>
           </div>
-          <div className="flex items-center gap-4">
-            <button 
-                onClick={() => setShowSettings(!showSettings)}
-                className={`transition-colors ${configError ? 'text-red-400 animate-pulse' : 'text-amber-200 hover:text-white'}`}
-                title="Configuration Base de Données"
+          
+          {/* Tab Navigation */}
+          <nav className="flex px-4 gap-1">
+            <button
+              onClick={() => setActiveView('editor')}
+              className={`px-6 py-2 font-bold text-sm rounded-t-lg transition-all ${
+                activeView === 'editor'
+                  ? 'bg-stone-100 text-amber-900 shadow-sm'
+                  : 'bg-amber-800/50 text-amber-200 hover:bg-amber-800 hover:text-white'
+              }`}
             >
-                ⚙️
+              <span className="mr-2">✏️</span>
+              Éditeur
             </button>
-            <a href="https://github.com/tidoe/MunchkinEditor" target="_blank" className="text-sm text-amber-300 hover:text-white underline hidden sm:inline">GitHub</a>
-          </div>
+            <button
+              onClick={() => setActiveView('gallery')}
+              className={`px-6 py-2 font-bold text-sm rounded-t-lg transition-all flex items-center gap-2 ${
+                activeView === 'gallery'
+                  ? 'bg-stone-100 text-amber-900 shadow-sm'
+                  : 'bg-amber-800/50 text-amber-200 hover:bg-amber-800 hover:text-white'
+              }`}
+            >
+              <span>🎴</span>
+              Galerie
+              {savedCards.length > 0 && (
+                <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                  activeView === 'gallery' ? 'bg-amber-600 text-white' : 'bg-amber-700 text-amber-100'
+                }`}>
+                  {savedCards.length}
+                </span>
+              )}
+            </button>
+          </nav>
         </div>
       </header>
 
@@ -343,67 +383,88 @@ const App: React.FC = () => {
       )}
 
       {/* Main Content */}
-      <main className="max-w-[1600px] mx-auto p-4 md:p-8 w-full flex-grow">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          
-          {/* Left: Stats & Saved Cards (2 cols) */}
-          <div className="lg:col-span-2 order-3 lg:order-1">
-             <div className="bg-amber-100 rounded-lg shadow border border-amber-200 overflow-hidden sticky top-24 max-h-[calc(100vh-120px)] flex flex-col">
-                 
-                 {/* Deck Statistics Panel */}
-                 <div className="border-b border-amber-300 max-h-[40%] overflow-hidden flex flex-col shrink-0">
-                    <DeckStats cards={savedCards} />
+      <main className="flex-grow">
+        {activeView === 'editor' ? (
+          /* Editor View */
+          <div className="max-w-[1600px] mx-auto p-4 md:p-8 w-full">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+              
+              {/* Left: Stats & Saved Cards (2 cols) */}
+              <div className="lg:col-span-2 order-3 lg:order-1">
+                 <div className="bg-amber-100 rounded-lg shadow border border-amber-200 overflow-hidden sticky top-32 max-h-[calc(100vh-160px)] flex flex-col">
+                     
+                     {/* Deck Statistics Panel */}
+                     <div className="border-b border-amber-300 max-h-[40%] overflow-hidden flex flex-col shrink-0">
+                        <DeckStats cards={savedCards} />
+                     </div>
+
+                     {/* Saved Cards List */}
+                     <div className="flex flex-col flex-grow overflow-hidden">
+                        <div className="bg-amber-800 text-amber-50 p-2 text-center text-sm font-bold uppercase tracking-wide shrink-0 flex items-center justify-between px-3">
+                            <span>Cartes ({savedCards.length})</span>
+                            <button 
+                              onClick={() => setActiveView('gallery')}
+                              className="text-xs bg-amber-700 hover:bg-amber-600 px-2 py-0.5 rounded transition-colors"
+                              title="Voir toutes les cartes"
+                            >
+                              Voir tout →
+                            </button>
+                        </div>
+                        <div className="overflow-y-auto p-2 space-y-2 flex-grow scrollbar-thin scrollbar-thumb-amber-600 bg-amber-50/50">
+                            {isLoadingList ? (
+                                <div className="text-center p-4 text-gray-500 text-xs">Chargement...</div>
+                            ) : savedCards.length === 0 ? (
+                                <div className="text-center p-4 text-gray-500 text-xs italic">
+                                    {configError ? "Erreur de connexion." : "Aucune carte trouvée."}
+                                </div>
+                            ) : (
+                                savedCards.map(c => (
+                                    <button 
+                                        key={c.id} 
+                                        onClick={() => handleSelectCard(c)}
+                                        className={`w-full text-left p-2 rounded text-xs border transition-all ${cardData.id === c.id ? 'bg-amber-200 border-amber-400 font-bold' : 'bg-white border-amber-100 hover:bg-amber-50'}`}
+                                    >
+                                        <div className="truncate">{c.title || "Sans Titre"}</div>
+                                        <div className="text-[10px] text-gray-500 opacity-80">{c.type}</div>
+                                    </button>
+                                ))
+                            )}
+                        </div>
+                     </div>
                  </div>
+              </div>
 
-                 {/* Saved Cards List */}
-                 <div className="flex flex-col flex-grow overflow-hidden">
-                    <div className="bg-amber-800 text-amber-50 p-2 text-center text-sm font-bold uppercase tracking-wide shrink-0">
-                        Cartes ({savedCards.length})
-                    </div>
-                    <div className="overflow-y-auto p-2 space-y-2 flex-grow scrollbar-thin scrollbar-thumb-amber-600 bg-amber-50/50">
-                        {isLoadingList ? (
-                            <div className="text-center p-4 text-gray-500 text-xs">Chargement...</div>
-                        ) : savedCards.length === 0 ? (
-                            <div className="text-center p-4 text-gray-500 text-xs italic">
-                                {configError ? "Erreur de connexion." : "Aucune carte trouvée."}
-                            </div>
-                        ) : (
-                            savedCards.map(c => (
-                                <button 
-                                    key={c.id} 
-                                    onClick={() => handleSelectCard(c)}
-                                    className={`w-full text-left p-2 rounded text-xs border transition-all ${cardData.id === c.id ? 'bg-amber-200 border-amber-400 font-bold' : 'bg-white border-amber-100 hover:bg-amber-50'}`}
-                                >
-                                    <div className="truncate">{c.title || "Sans Titre"}</div>
-                                    <div className="text-[10px] text-gray-500 opacity-80">{c.type}</div>
-                                </button>
-                            ))
-                        )}
-                    </div>
+              {/* Center: Preview (4 cols) */}
+              <div className="lg:col-span-4 order-1 lg:order-2 lg:sticky lg:top-32">
+                 <div className="bg-white rounded-lg shadow-xl overflow-hidden border-2 border-amber-900/10">
+                    <div className="bg-gray-50 border-b p-2 text-center text-xs text-gray-500 font-mono uppercase">Aperçu de la Carte</div>
+                    <CardPreview data={cardData} />
                  </div>
-             </div>
-          </div>
+              </div>
 
-          {/* Center: Preview (4 cols) */}
-          <div className="lg:col-span-4 order-1 lg:order-2 lg:sticky lg:top-24">
-             <div className="bg-white rounded-lg shadow-xl overflow-hidden border-2 border-amber-900/10">
-                <div className="bg-gray-50 border-b p-2 text-center text-xs text-gray-500 font-mono uppercase">Aperçu de la Carte</div>
-                <CardPreview data={cardData} />
-             </div>
+              {/* Right: Editor (6 cols) */}
+              <div className="lg:col-span-6 order-2 lg:order-3">
+                <CardForm 
+                    cardData={cardData} 
+                    onChange={setCardData} 
+                    onSave={handleSaveCard}
+                    onNew={handleNewCard}
+                    isSaving={isSaving}
+                    hasScriptUrl={!!scriptUrl}
+                />
+              </div>
+            </div>
           </div>
-
-          {/* Right: Editor (6 cols) */}
-          <div className="lg:col-span-6 order-2 lg:order-3">
-            <CardForm 
-                cardData={cardData} 
-                onChange={setCardData} 
-                onSave={handleSaveCard}
-                onNew={handleNewCard}
-                isSaving={isSaving}
-                hasScriptUrl={!!scriptUrl}
-            />
-          </div>
-        </div>
+        ) : (
+          /* Gallery View */
+          <CardGallery
+            cards={savedCards}
+            onSelectCard={handleSelectCard}
+            onNewCard={handleNewCard}
+            isLoading={isLoadingList}
+            selectedCardId={cardData.id}
+          />
+        )}
       </main>
     </div>
   );
