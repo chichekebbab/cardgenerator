@@ -45,7 +45,10 @@ steps:
 images:
   - '$_AR_HOSTNAME/$_AR_PROJECT_ID/$_AR_REPOSITORY/$_SERVICE_NAME:$COMMIT_SHA'
 
+options:
+  logging: CLOUD_LOGGING_ONLY
+
 # Définition des variables que l'on va régler dans la console Google
 substitutions:
-    _SERVICE_NAME: cardgenerator # <--- Vérifiez que c'est bien le nom de votre service Cloud Run
-    _DEPLOY_REGION: europe-west9 # <--- Vérifiez votre région (visible dans l'URL de votre app)
+    _SERVICE_NAME: cardgenerator
+    _DEPLOY_REGION: europe-west9
