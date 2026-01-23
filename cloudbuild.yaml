@@ -1,4 +1,15 @@
 steps:
+  # Debug: Print substitution variable status
+  - name: 'gcr.io/cloud-builders/docker'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "=== Debug Cloud Build Substitutions ===" && \
+        echo "_VITE_GEMINI_API_KEY is set: $( [ -n '${_VITE_GEMINI_API_KEY}' ] && echo 'YES' || echo 'NO' )" && \
+        echo "_VITE_GEMINI_API_KEY length: ${#_VITE_GEMINI_API_KEY}"
+    id: 'Debug'
+
   # Étape 1 : Construire l'image Docker en passant la clé API
   - name: 'gcr.io/cloud-builders/docker'
     args:
@@ -6,8 +17,7 @@ steps:
       - '--no-cache'
       - '-t'
       - '$_GCR_HOSTNAME/$PROJECT_ID/$REPO_NAME/$_SERVICE_NAME:$COMMIT_SHA'
-      - '--build-arg'
-      - 'VITE_GEMINI_API_KEY=$_VITE_GEMINI_API_KEY' # <--- C'est ici que la magie opère
+      - '--build-arg=VITE_GEMINI_API_KEY=${_VITE_GEMINI_API_KEY}'
       - '.'
     id: 'Build'
 
