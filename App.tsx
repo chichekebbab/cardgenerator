@@ -3,6 +3,7 @@ import CardForm from './components/CardForm';
 import CardPreview from './components/CardPreview';
 import DeckStats from './components/DeckStats';
 import CardGallery from './components/CardGallery';
+import ImportModal from './components/ImportModal';
 import { CardData, INITIAL_CARD_DATA } from './types';
 import { saveCardToSheet, fetchCardsFromSheet } from './services/sheetService';
 
@@ -150,6 +151,7 @@ const App: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingList, setIsLoadingList] = useState(false);
   const [configError, setConfigError] = useState<string | null>(null);
+  const [showImportModal, setShowImportModal] = useState(false);
 
   // Charger l'URL du script depuis le localStorage
   useEffect(() => {
@@ -214,6 +216,31 @@ const App: React.FC = () => {
   const handleNewCard = () => {
     setCardData({ ...INITIAL_CARD_DATA, id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString() });
     setActiveView('editor'); // Switch to editor when creating new card
+  };
+
+  const handleImportCards = async (cards: CardData[]) => {
+    if (!scriptUrl) {
+      // If no script URL, just add to local state
+      setSavedCards(prev => [...cards, ...prev]);
+      return;
+    }
+
+    // Save each card to the sheet
+    for (const card of cards) {
+      try {
+        const result = await saveCardToSheet(scriptUrl, card);
+        // Update the card with the image URL if returned
+        if (result.imageUrl && (result.imageUrl.startsWith('http') || result.imageUrl.startsWith('data:'))) {
+          card.storedImageUrl = result.imageUrl;
+        }
+      } catch (e) {
+        console.error('Erreur lors de la sauvegarde de la carte:', e);
+        // Continue with other cards even if one fails
+      }
+    }
+
+    // Refresh the saved cards list
+    await loadSavedCards(scriptUrl);
   };
 
   const handleSelectCard = (card: CardData) => {
@@ -382,6 +409,15 @@ const App: React.FC = () => {
           </div>
       )}
 
+      {/* Import Modal */}
+      {showImportModal && (
+          <ImportModal
+              isOpen={showImportModal}
+              onClose={() => setShowImportModal(false)}
+              onImport={handleImportCards}
+          />
+      )}
+
       {/* Main Content */}
       <main className="flex-grow">
         {activeView === 'editor' ? (
@@ -444,11 +480,12 @@ const App: React.FC = () => {
 
               {/* Right: Editor (6 cols) */}
               <div className="lg:col-span-6 order-2 lg:order-3">
-                <CardForm 
-                    cardData={cardData} 
-                    onChange={setCardData} 
+                <CardForm
+                    cardData={cardData}
+                    onChange={setCardData}
                     onSave={handleSaveCard}
                     onNew={handleNewCard}
+                    onImport={() => setShowImportModal(true)}
                     isSaving={isSaving}
                     hasScriptUrl={!!scriptUrl}
                 />
