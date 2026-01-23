@@ -13,6 +13,11 @@ COPY . .
 ARG VITE_GEMINI_API_KEY
 ENV VITE_GEMINI_API_KEY=$VITE_GEMINI_API_KEY
 
+# Debug: Log that we're building (NOT the actual key for security)
+RUN echo "=== Build starting ===" && \
+    echo "VITE_GEMINI_API_KEY is set: $(test -n \"$VITE_GEMINI_API_KEY\" && echo 'YES' || echo 'NO')" && \
+    echo "VITE_GEMINI_API_KEY length: $(echo -n \"$VITE_GEMINI_API_KEY\" | wc -c)"
+
 RUN npm run build
 
 # Runtime stage
