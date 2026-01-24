@@ -24,11 +24,11 @@ const parseCSVLine = (line: string, delimiter: string = ';'): string[] => {
   let braceDepth = 0;
   let bracketDepth = 0;
   let inQuotes = false;
-  
+
   for (let i = 0; i < line.length; i++) {
     const char = line[i];
     const prevChar = i > 0 ? line[i - 1] : '';
-    
+
     // Handle escaped quotes in JSON
     if (char === '"' && prevChar !== '\\') {
       inQuotes = !inQuotes;
@@ -57,7 +57,7 @@ const parseCSVLine = (line: string, delimiter: string = ';'): string[] => {
     }
   }
   result.push(current);
-  
+
   return result;
 };
 
@@ -85,35 +85,35 @@ const parseImportData = (input: string): ImportResult => {
   const lines = input.trim().split('\n').filter(line => line.trim());
   const success: CardData[] = [];
   const errors: string[] = [];
-  
+
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
-    
+
     // Skip header line
     if (i === 0 && isHeaderLine(line)) {
       continue;
     }
-    
+
     // Skip empty lines
     if (!line) continue;
-    
+
     try {
       const parts = parseCSVLine(line, ';');
-      
+
       // We expect at least 4 columns: id, title, type, json_data
       if (parts.length < 4) {
         errors.push(`Ligne ${i + 1}: Format invalide (moins de 4 colonnes)`);
         continue;
       }
-      
+
       const jsonData = parts[3]; // json_data column
       const imageUrl = parts.length > 4 ? parts[4] : ''; // image_url column (optional)
-      
+
       if (!jsonData || jsonData.trim() === '') {
         errors.push(`Ligne ${i + 1}: Colonne json_data vide`);
         continue;
       }
-      
+
       // Parse the JSON
       let cardJson: Partial<CardData>;
       try {
@@ -122,24 +122,24 @@ const parseImportData = (input: string): ImportResult => {
         errors.push(`Ligne ${i + 1}: JSON invalide dans json_data`);
         continue;
       }
-      
+
       // Validate the card
       if (!validateCard(cardJson)) {
         errors.push(`Ligne ${i + 1}: Carte invalide (titre ou type manquant)`);
         continue;
       }
-      
+
       // Generate new UUID
       cardJson.id = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      
+
       // Use image_url from column 5 if present and not already in JSON
       if (imageUrl && imageUrl.trim() !== '' && !cardJson.storedImageUrl) {
         cardJson.storedImageUrl = imageUrl.trim();
       }
-      
+
       // Clear imageData as we don't want to import base64 data
       cardJson.imageData = null;
-      
+
       // Ensure all required fields have defaults
       const finalCard: CardData = {
         id: cardJson.id,
@@ -162,15 +162,17 @@ const parseImportData = (input: string): ImportResult => {
         imageScale: cardJson.imageScale ?? 100,
         imageOffsetX: cardJson.imageOffsetX ?? 0,
         imageOffsetY: cardJson.imageOffsetY ?? 0,
+        isBaseCard: cardJson.isBaseCard || false,
+        isValidated: cardJson.isValidated || false,
       };
-      
+
       success.push(finalCard);
-      
+
     } catch (e) {
       errors.push(`Ligne ${i + 1}: Erreur inattendue`);
     }
   }
-  
+
   return { success, errors };
 };
 
@@ -231,7 +233,7 @@ const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onImport }) 
     try {
       // Import all cards at once
       await onImport(success);
-      
+
       setImportedCards(success);
       setImportProgress({ current: success.length, total: success.length });
       setImportState('success');
@@ -255,8 +257,8 @@ const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onImport }) 
             {importState === 'success' && 'Importation terminée'}
             {importState === 'error' && 'Erreur d\'importation'}
           </h3>
-          <button 
-            onClick={handleClose} 
+          <button
+            onClick={handleClose}
             className="text-gray-400 hover:text-gray-600 text-2xl leading-none p-1"
             disabled={importState === 'importing'}
           >
@@ -311,7 +313,7 @@ const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onImport }) 
           {importState === 'importing' && (
             <div className="space-y-4 py-8">
               <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
-                <div 
+                <div
                   className="bg-amber-500 h-4 rounded-full transition-all duration-300"
                   style={{ width: `${(importProgress.current / importProgress.total) * 100}%` }}
                 />

@@ -119,7 +119,14 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
             <label className="block text-sm font-medium text-gray-700 mb-1">Type de Carte</label>
             <select
               value={cardData.type}
-              onChange={(e) => handleChange('type', e.target.value as CardType)}
+              onChange={(e) => {
+                const newType = e.target.value as CardType;
+                onChange({
+                  ...cardData,
+                  type: newType,
+                  bonus: newType === CardType.LEVEL_UP ? 1 : cardData.bonus
+                });
+              }}
               className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
             >
               {Object.values(CardType).map((type) => (
@@ -151,7 +158,7 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
               />
             </div>
           )}
-          {cardData.type === CardType.ITEM && (
+          {(cardData.type === CardType.ITEM || cardData.type === CardType.LEVEL_UP || cardData.type === CardType.FAITHFUL_SERVANT) && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Bonus</label>
               <input
@@ -162,16 +169,18 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
               />
             </div>
           )}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Val/Trésors</label>
-            <input
-              type="text"
-              value={cardData.gold}
-              onChange={(e) => handleChange('gold', e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-              placeholder={cardData.type === CardType.MONSTER ? "ex: 2 Trésors" : "ex: 500 Pièces d'Or"}
-            />
-          </div>
+          {cardData.type !== CardType.FAITHFUL_SERVANT && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Val/Trésors</label>
+              <input
+                type="text"
+                value={cardData.gold}
+                onChange={(e) => handleChange('gold', e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                placeholder={cardData.type === CardType.MONSTER ? "ex: 2 Trésors" : "ex: 500 Pièces d'Or"}
+              />
+            </div>
+          )}
         </div>
 
         {/* Monster Specifics */}
@@ -231,15 +240,41 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
         )}
 
         {/* Generic Restrictions */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Restrictions / Utilisable par</label>
-          <input
-            type="text"
-            value={cardData.restrictions}
-            onChange={(e) => handleChange('restrictions', e.target.value)}
-            placeholder="ex: Utilisable par l'Elfe uniquement"
-            className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-          />
+        {cardData.type !== CardType.FAITHFUL_SERVANT && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Restrictions / Utilisable par</label>
+            <input
+              type="text"
+              value={cardData.restrictions}
+              onChange={(e) => handleChange('restrictions', e.target.value)}
+              placeholder="ex: Utilisable par l'Elfe uniquement"
+              className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+            />
+          </div>
+
+        )}
+
+        {/* Metadata */}
+        <div className="flex gap-6 p-3 bg-gray-50 rounded border border-gray-200">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={cardData.isBaseCard}
+              onChange={(e) => handleChange('isBaseCard', e.target.checked)}
+              className="w-4 h-4 text-amber-600 rounded focus:ring-amber-500"
+            />
+            <span className="text-sm font-medium text-gray-700">Carte de base</span>
+          </label>
+
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={cardData.isValidated}
+              onChange={(e) => handleChange('isValidated', e.target.checked)}
+              className="w-4 h-4 text-green-600 rounded focus:ring-green-500"
+            />
+            <span className="text-sm font-medium text-gray-700">Carte validée</span>
+          </label>
         </div>
 
         {/* Image Generation Section */}
@@ -338,7 +373,9 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
         )}
 
       </div>
+
     </div>
+
   );
 };
 

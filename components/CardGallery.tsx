@@ -17,6 +17,8 @@ const CARD_TYPE_ORDER: CardType[] = [
   CardType.ITEM,
   CardType.CLASS,
   CardType.RACE,
+  CardType.LEVEL_UP,
+  CardType.FAITHFUL_SERVANT,
   CardType.OTHER,
 ];
 
@@ -33,6 +35,10 @@ const getSectionStyle = (type: CardType) => {
       return { bg: 'bg-blue-50', border: 'border-blue-200', header: 'bg-blue-600', icon: '🎭' };
     case CardType.RACE:
       return { bg: 'bg-green-50', border: 'border-green-200', header: 'bg-green-600', icon: '🧝' };
+    case CardType.LEVEL_UP:
+      return { bg: 'bg-cyan-50', border: 'border-cyan-200', header: 'bg-cyan-600', icon: '🆙' };
+    case CardType.FAITHFUL_SERVANT:
+      return { bg: 'bg-indigo-50', border: 'border-indigo-200', header: 'bg-indigo-600', icon: '🐕' };
     default:
       return { bg: 'bg-gray-50', border: 'border-gray-200', header: 'bg-gray-600', icon: '📜' };
   }
@@ -47,33 +53,54 @@ const CardGallery: React.FC<CardGalleryProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [collapsedSections, setCollapsedSections] = useState<Set<CardType>>(new Set());
+  const [filterBase, setFilterBase] = useState<'all' | 'oui' | 'non'>('all');
+  const [filterValidated, setFilterValidated] = useState<'all' | 'oui' | 'non'>('all');
 
-  // Filter cards based on search query
+  // Filter cards based on search query and filters
   const filteredCards = useMemo(() => {
-    if (!searchQuery.trim()) return cards;
-    
-    const query = searchQuery.toLowerCase().trim();
-    return cards.filter(card => 
-      card.title.toLowerCase().includes(query) ||
-      card.description.toLowerCase().includes(query) ||
-      card.type.toLowerCase().includes(query)
-    );
-  }, [cards, searchQuery]);
+    let result = cards;
+
+    // Filter by Search Query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      result = result.filter(card =>
+        card.title.toLowerCase().includes(query) ||
+        card.description.toLowerCase().includes(query) ||
+        card.type.toLowerCase().includes(query)
+      );
+    }
+
+    // Filter by Base Card
+    if (filterBase === 'oui') {
+      result = result.filter(card => card.isBaseCard);
+    } else if (filterBase === 'non') {
+      result = result.filter(card => !card.isBaseCard);
+    }
+
+    // Filter by Validated
+    if (filterValidated === 'oui') {
+      result = result.filter(card => card.isValidated);
+    } else if (filterValidated === 'non') {
+      result = result.filter(card => !card.isValidated);
+    }
+
+    return result;
+  }, [cards, searchQuery, filterBase, filterValidated]);
 
   // Group cards by type
   const cardsByType = useMemo(() => {
     const grouped = new Map<CardType, CardData[]>();
-    
+
     // Initialize all types with empty arrays
     CARD_TYPE_ORDER.forEach(type => grouped.set(type, []));
-    
+
     // Group filtered cards
     filteredCards.forEach(card => {
       const typeCards = grouped.get(card.type) || [];
       typeCards.push(card);
       grouped.set(card.type, typeCards);
     });
-    
+
     return grouped;
   }, [filteredCards]);
 
@@ -124,6 +151,28 @@ const CardGallery: React.FC<CardGalleryProps> = ({
             )}
           </div>
 
+          {/* Filters */}
+          <div className="flex gap-2">
+            <select
+              value={filterBase}
+              onChange={(e) => setFilterBase(e.target.value as 'all' | 'oui' | 'non')}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-amber-500 focus:border-amber-500"
+            >
+              <option value="all">Toutes (Base ?)</option>
+              <option value="oui">Base: Oui</option>
+              <option value="non">Base: Non</option>
+            </select>
+            <select
+              value={filterValidated}
+              onChange={(e) => setFilterValidated(e.target.value as 'all' | 'oui' | 'non')}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-amber-500 focus:border-amber-500"
+            >
+              <option value="all">Toutes (Valid ?)</option>
+              <option value="oui">Validée: Oui</option>
+              <option value="non">Validée: Non</option>
+            </select>
+          </div>
+
           {/* Card count */}
           <div className="text-sm text-gray-600 hidden sm:block whitespace-nowrap">
             {searchQuery ? (
@@ -147,126 +196,137 @@ const CardGallery: React.FC<CardGalleryProps> = ({
       </div>
 
       {/* Loading State */}
-      {isLoading && (
-        <div className="flex items-center justify-center py-20">
-          <div className="flex flex-col items-center gap-4">
-            <div className="animate-spin rounded-full h-12 w-12 border-4 border-amber-600 border-t-transparent"></div>
-            <p className="text-gray-600 font-medium">Chargement des cartes...</p>
+      {
+        isLoading && (
+          <div className="flex items-center justify-center py-20">
+            <div className="flex flex-col items-center gap-4">
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-amber-600 border-t-transparent"></div>
+              <p className="text-gray-600 font-medium">Chargement des cartes...</p>
+            </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* Empty State */}
-      {!isLoading && cards.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-20 px-4">
-          <div className="text-6xl mb-4">🃏</div>
-          <h3 className="text-xl font-bold text-gray-700 mb-2">Aucune carte créée</h3>
-          <p className="text-gray-500 text-center mb-6 max-w-md">
-            Commencez par créer votre première carte Munchkin ! Chaque carte apparaîtra ici organisée par type.
-          </p>
-          <button
-            onClick={onNewCard}
-            className="flex items-center gap-2 px-6 py-3 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg shadow-lg transition-all transform hover:scale-105"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Créer ma première carte
-          </button>
-        </div>
-      )}
+      {
+        !isLoading && cards.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-20 px-4">
+            <div className="text-6xl mb-4">🃏</div>
+            <h3 className="text-xl font-bold text-gray-700 mb-2">Aucune carte créée</h3>
+            <p className="text-gray-500 text-center mb-6 max-w-md">
+              Commencez par créer votre première carte Munchkin ! Chaque carte apparaîtra ici organisée par type.
+            </p>
+            <button
+              onClick={onNewCard}
+              className="flex items-center gap-2 px-6 py-3 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg shadow-lg transition-all transform hover:scale-105"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Créer ma première carte
+            </button>
+          </div>
+        )
+      }
 
       {/* No Search Results */}
-      {!isLoading && cards.length > 0 && filteredCards.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-20 px-4">
-          <div className="text-6xl mb-4">🔍</div>
-          <h3 className="text-xl font-bold text-gray-700 mb-2">Aucun résultat</h3>
-          <p className="text-gray-500 text-center mb-4">
-            Aucune carte ne correspond à "{searchQuery}"
-          </p>
-          <button
-            onClick={() => setSearchQuery('')}
-            className="text-amber-600 hover:text-amber-700 font-medium underline"
-          >
-            Effacer la recherche
-          </button>
-        </div>
-      )}
+      {
+        !isLoading && cards.length > 0 && filteredCards.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-20 px-4">
+            <div className="text-6xl mb-4">🔍</div>
+            <h3 className="text-xl font-bold text-gray-700 mb-2">Aucun résultat</h3>
+            <p className="text-gray-500 text-center mb-4">
+              Aucune carte ne correspond à "{searchQuery}"
+            </p>
+            <button
+              onClick={() => setSearchQuery('')}
+              className="text-amber-600 hover:text-amber-700 font-medium underline"
+            >
+              Effacer la recherche
+            </button>
+          </div>
+        )
+      }
 
       {/* Card Sections by Type */}
-      {!isLoading && filteredCards.length > 0 && (
-        <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
-          {CARD_TYPE_ORDER.map(type => {
-            const typeCards = cardsByType.get(type) || [];
-            if (typeCards.length === 0) return null;
-            
-            const style = getSectionStyle(type);
-            const isCollapsed = collapsedSections.has(type);
-            
-            return (
-              <section
-                key={type}
-                className={`rounded-xl overflow-hidden border-2 ${style.border} ${style.bg}`}
-              >
-                {/* Section Header */}
-                <button
-                  onClick={() => toggleSection(type)}
-                  className={`w-full flex items-center justify-between px-4 py-3 ${style.header} text-white font-bold text-lg transition-colors hover:brightness-110`}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">{style.icon}</span>
-                    <span>{type}</span>
-                    <span className="text-white/80 font-normal text-sm">
-                      ({typeCards.length} carte{typeCards.length !== 1 ? 's' : ''})
-                    </span>
-                  </div>
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className={`h-6 w-6 transition-transform duration-200 ${isCollapsed ? '' : 'rotate-180'}`}
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
+      {
+        !isLoading && filteredCards.length > 0 && (
+          <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
+            {CARD_TYPE_ORDER.map(type => {
+              const typeCards = cardsByType.get(type) || [];
+              if (typeCards.length === 0) return null;
 
-                {/* Section Content */}
-                <div
-                  className={`transition-all duration-300 ease-in-out overflow-hidden ${
-                    isCollapsed ? 'max-h-0' : 'max-h-[2000px]'
-                  }`}
+              const style = getSectionStyle(type);
+              const isCollapsed = collapsedSections.has(type);
+
+              return (
+                <section
+                  key={type}
+                  className={`rounded-xl overflow-hidden border-2 ${style.border} ${style.bg}`}
                 >
-                  <div className="p-4">
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                      {typeCards.map(card => (
-                        <CardThumbnail
-                          key={card.id}
-                          card={card}
-                          onClick={() => onSelectCard(card)}
-                          isSelected={card.id === selectedCardId}
-                        />
-                      ))}
+                  {/* Section Header */}
+                  <button
+                    onClick={() => toggleSection(type)}
+                    className={`w-full flex items-center justify-between px-4 py-3 ${style.header} text-white font-bold text-lg transition-colors hover:brightness-110`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">{style.icon}</span>
+                      <span>{type}</span>
+                      <span className="text-white/80 font-normal text-sm">
+                        ({typeCards.length} carte{typeCards.length !== 1 ? 's' : ''})
+                      </span>
+                    </div>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className={`h-6 w-6 transition-transform duration-200 ${isCollapsed ? '' : 'rotate-180'}`}
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+
+                  {/* Section Content */}
+                  <div
+                    className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${isCollapsed ? 'grid-rows-[0fr]' : 'grid-rows-[1fr]'
+                      }`}
+                  >
+                    <div className="overflow-hidden">
+                      <div className="p-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                          {typeCards.map(card => (
+                            <CardThumbnail
+                              key={card.id}
+                              card={card}
+                              onClick={() => onSelectCard(card)}
+                              isSelected={card.id === selectedCardId}
+                            />
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </section>
-            );
-          })}
-        </div>
-      )}
+                </section>
+              );
+            })}
+          </div>
+        )
+      }
 
       {/* Mobile card count */}
-      {!isLoading && cards.length > 0 && (
-        <div className="sm:hidden text-center py-4 text-sm text-gray-500">
-          {searchQuery ? (
-            <span>{totalMatchingCards} carte{totalMatchingCards !== 1 ? 's' : ''} trouvée{totalMatchingCards !== 1 ? 's' : ''}</span>
-          ) : (
-            <span>{cards.length} carte{cards.length !== 1 ? 's' : ''} au total</span>
-          )}
-        </div>
-      )}
-    </div>
+      {
+        !isLoading && cards.length > 0 && (
+          <div className="sm:hidden text-center py-4 text-sm text-gray-500">
+            {searchQuery ? (
+              <span>{totalMatchingCards} carte{totalMatchingCards !== 1 ? 's' : ''} trouvée{totalMatchingCards !== 1 ? 's' : ''}</span>
+            ) : (
+              <span>{cards.length} carte{cards.length !== 1 ? 's' : ''} au total</span>
+            )}
+          </div>
+        )
+      }
+    </div >
   );
 };
 

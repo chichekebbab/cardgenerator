@@ -95,6 +95,8 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data }) => {
             if (data.itemSlot || data.isBig) return 'layout_equipement.png';
             return 'layout_item.png';
         }
+        if (data.type === CardType.LEVEL_UP) return 'layout_lvlup.png';
+        if (data.type === CardType.FAITHFUL_SERVANT) return 'layout_malediction.png';
         return 'layout_monstre.png';
     }, [data.type, data.itemSlot, data.isBig]);
 
@@ -154,25 +156,25 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data }) => {
     const handleDownload = async () => {
         if (!cardRef.current) return;
         setIsDownloading(true);
-        
+
         try {
             await document.fonts.ready;
             await new Promise(resolve => setTimeout(resolve, 200)); // Petit délai pour assurer le rendu
 
             const cardElement = cardRef.current;
             const cardRect = cardElement.getBoundingClientRect();
-            
+
             // Pre-calculate positions using index-based matching (more reliable than class name matching)
             const transformedPositions: Array<{ top: number; left: number; width: number; height: number }> = [];
-            
+
             // Find all elements with transform class
             const allTransformed = cardElement.querySelectorAll('[class*="transform"]');
-            
+
             allTransformed.forEach((el) => {
                 const htmlEl = el as HTMLElement;
                 const rect = htmlEl.getBoundingClientRect();
                 const computedStyle = window.getComputedStyle(htmlEl);
-                
+
                 // Only process elements that actually have a transform applied
                 if (computedStyle.transform && computedStyle.transform !== 'none') {
                     transformedPositions.push({
@@ -183,7 +185,7 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data }) => {
                     });
                 }
             });
-            
+
             // Capture art image: Calculate position relative to the CARD, not the parent
             // The image is scaled and positioned via transform, we need its visual center position
             const artImage = cardElement.querySelector('img[alt="Art"]') as HTMLImageElement;
@@ -195,13 +197,13 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data }) => {
                 containerWidth: number;
                 containerHeight: number;
             } | null = null;
-            
+
             if (artImage) {
                 const imgRect = artImage.getBoundingClientRect();
                 // Get the overflow-visible container (image's grandparent in the layout)
                 const container = artImage.closest('.overflow-visible') as HTMLElement;
                 const containerRect = container?.getBoundingClientRect();
-                
+
                 if (containerRect) {
                     // Calculate where the image visually appears relative to its container
                     artImageData = {
@@ -225,16 +227,16 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data }) => {
                     // Find all transformed elements in clone (same order as original)
                     const clonedTransformed = clonedElement.querySelectorAll('[class*="transform"]');
                     let dataIndex = 0;
-                    
+
                     clonedTransformed.forEach((clonedEl) => {
                         const htmlEl = clonedEl as HTMLElement;
                         const computedStyle = window.getComputedStyle(htmlEl);
-                        
+
                         // Check if this element has a transform
                         if (computedStyle.transform && computedStyle.transform !== 'none') {
                             const posData = transformedPositions[dataIndex];
                             dataIndex++;
-                            
+
                             if (posData) {
                                 // Apply the pre-calculated position and remove transform
                                 htmlEl.style.transform = 'none';
@@ -243,17 +245,17 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data }) => {
                             }
                         }
                     });
-                    
+
                     // Fix art image - make it fill its container at natural aspect ratio
                     if (artImageData) {
                         const clonedArtImg = clonedElement.querySelector('img[alt="Art"]') as HTMLImageElement;
                         const clonedContainer = clonedArtImg?.closest('.overflow-visible') as HTMLElement;
-                        
+
                         if (clonedArtImg && clonedContainer) {
                             // Center the image in the container at its current visual size
                             const offsetX = (artImageData.containerWidth - artImageData.visualWidth) / 2 + artImageData.visualLeft + artImageData.visualWidth / 2 - artImageData.containerWidth / 2;
                             const offsetY = (artImageData.containerHeight - artImageData.visualHeight) / 2 + artImageData.visualTop + artImageData.visualHeight / 2 - artImageData.containerHeight / 2;
-                            
+
                             clonedArtImg.style.transform = 'none';
                             clonedArtImg.style.width = `${artImageData.visualWidth}px`;
                             clonedArtImg.style.height = `${artImageData.visualHeight}px`;
@@ -263,7 +265,7 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data }) => {
                             clonedArtImg.style.objectFit = 'fill';
                             clonedArtImg.style.maxWidth = 'none';
                             clonedArtImg.style.maxHeight = 'none';
-                            
+
                             // Ensure container has overflow visible for the positioned image
                             clonedContainer.style.overflow = 'visible';
                         }
@@ -354,6 +356,20 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data }) => {
                 return { style: baseStyle, label: '', value: '', textColor: 'text-white' };
             case CardType.CLASS:
                 return { style: baseStyle, label: '', value: '', textColor: 'text-white' };
+            case CardType.LEVEL_UP:
+                return {
+                    style: baseStyle,
+                    label: 'BONUS',
+                    value: data.bonus !== '' ? `+${data.bonus}` : '',
+                    textColor: 'text-white'
+                };
+            case CardType.FAITHFUL_SERVANT:
+                return {
+                    style: baseStyle,
+                    label: 'BONUS',
+                    value: data.bonus !== '' ? `+${data.bonus}` : '',
+                    textColor: 'text-white'
+                };
             default:
                 return { style: baseStyle, label: '', value: '', textColor: 'text-white' };
         }
@@ -447,44 +463,46 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data }) => {
                         </h2>
                     </div>
 
-                    {/* 3. DESCRIPTION */}
+                    {/* 3. DESCRIPTION - Masqué pour LEVEL_UP */}
                     {/* Commence à 60;229, largeur jusqu'à 600, hauteur max jusqu'à 500 */}
-                    <div className="absolute z-30"
-                        ref={descriptionRef}
-                        style={{
-                            left: scaleX(60),
-                            top: scaleY(229),
-                            width: scaleX(600 - 60),
-                            maxHeight: scaleY(500 - 229),
-                            overflow: 'hidden',
-                            backgroundImage: 'url(/texture/texture_description.png)',
-                            backgroundSize: 'cover',
-                            backgroundPosition: 'center',
-                            borderRadius: '4px',
-                            border: '2px solid #5a4a3a',
-                            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.15), inset 0 -1px 0 rgba(0, 0, 0, 0.2)'
-                        }}>
-                        {/* Overlay vignette - assombrit uniquement les bords */}
-                        <div className="absolute inset-0 pointer-events-none rounded-[2px]"
+                    {data.type !== CardType.LEVEL_UP && (
+                        <div className="absolute z-30"
+                            ref={descriptionRef}
                             style={{
-                                background: 'radial-gradient(ellipse at center, transparent 40%, rgba(0, 0, 0, 0.35) 100%)'
-                            }}
-                        />
-                        <div className="relative w-full text-center font-munchkin-body font-medium text-black p-2"
-                            style={{ fontSize: `${descriptionFontSize}px`, lineHeight: '1.1' }}>
-                            {data.restrictions && (
-                                <div className="font-bold uppercase mb-1">{data.restrictions}</div>
-                            )}
-                            <p>{data.description}</p>
-                            {/* Affichage de l'Incident Fâcheux ou Effect si applicable */}
-                            {(data.type === CardType.MONSTER && data.badStuff) && (
-                                <div className="mt-2 text-left border-t border-black/20 pt-1">
-                                    <span className="font-bold">Incident Fâcheux : </span>
-                                    <span className="italic">{data.badStuff}</span>
-                                </div>
-                            )}
+                                left: scaleX(60),
+                                top: scaleY(229),
+                                width: scaleX(600 - 60),
+                                maxHeight: scaleY(500 - 229),
+                                overflow: 'hidden',
+                                backgroundImage: 'url(/texture/texture_description.png)',
+                                backgroundSize: 'cover',
+                                backgroundPosition: 'center',
+                                borderRadius: '4px',
+                                border: '2px solid #5a4a3a',
+                                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.15), inset 0 -1px 0 rgba(0, 0, 0, 0.2)'
+                            }}>
+                            {/* Overlay vignette - assombrit uniquement les bords */}
+                            <div className="absolute inset-0 pointer-events-none rounded-[2px]"
+                                style={{
+                                    background: 'radial-gradient(ellipse at center, transparent 40%, rgba(0, 0, 0, 0.35) 100%)'
+                                }}
+                            />
+                            <div className="relative w-full text-center font-munchkin-body font-medium text-black p-2"
+                                style={{ fontSize: `${descriptionFontSize}px`, lineHeight: '1.1' }}>
+                                {data.restrictions && (
+                                    <div className="font-bold uppercase mb-1">{data.restrictions}</div>
+                                )}
+                                <p>{data.description}</p>
+                                {/* Affichage de l'Incident Fâcheux ou Effect si applicable */}
+                                {(data.type === CardType.MONSTER && data.badStuff) && (
+                                    <div className="mt-2 text-left border-t border-black/20 pt-1">
+                                        <span className="font-bold">Incident Fâcheux : </span>
+                                        <span className="italic">{data.badStuff}</span>
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                    </div>
+                    )}
 
                     {/* 4. IMAGE (Bas - Espace restant) */}
                     {/* Je la place sous la zone de description (Y=500) jusqu'en bas (Y=900 approx) */}
@@ -532,23 +550,25 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data }) => {
                         )}
                     </div>
 
-                    {/* COIN DROIT (440;914) : Trésor / Or */}
-                    <div className="absolute z-30 flex flex-col items-start"
-                        style={{ left: scaleX(440), top: scaleY(914) }}>
+                    {/* COIN DROIT (440;914) : Trésor / Or - Masqué pour LEVEL_UP et FAITHFUL_SERVANT */}
+                    {data.type !== CardType.LEVEL_UP && data.type !== CardType.FAITHFUL_SERVANT && (
+                        <div className="absolute z-30 flex flex-col items-start"
+                            style={{ left: scaleX(440), top: scaleY(914) }}>
 
-                        <span className="font-medieval font-bold text-[#682A22] whitespace-nowrap block"
-                            style={{ fontSize: '0.9rem' }}>
-                            {data.gold ? data.gold : (
-                                <>
-                                    {data.type === CardType.ITEM && "Sans Valeur"}
-                                    {data.type === CardType.MONSTER && "Pas de Trésor"}
-                                    {data.type !== CardType.ITEM && data.type !== CardType.MONSTER && (
-                                        <span className="opacity-80">{data.type}</span>
-                                    )}
-                                </>
-                            )}
-                        </span>
-                    </div>
+                            <span className="font-medieval font-bold text-[#682A22] whitespace-nowrap block"
+                                style={{ fontSize: '0.9rem' }}>
+                                {data.gold ? data.gold : (
+                                    <>
+                                        {data.type === CardType.ITEM && "Sans Valeur"}
+                                        {data.type === CardType.MONSTER && "Pas de Trésor"}
+                                        {data.type !== CardType.ITEM && data.type !== CardType.MONSTER && (
+                                            <span className="opacity-80">{data.type}</span>
+                                        )}
+                                    </>
+                                )}
+                            </span>
+                        </div>
+                    )}
 
                 </div>
             </div>

@@ -54,6 +54,10 @@ const CardThumbnail: React.FC<CardThumbnailProps> = ({ card, onClick, isSelected
         return { bg: 'bg-blue-100', border: 'border-blue-300', text: 'text-blue-800', badge: 'bg-blue-600' };
       case CardType.RACE:
         return { bg: 'bg-green-100', border: 'border-green-300', text: 'text-green-800', badge: 'bg-green-600' };
+      case CardType.FAITHFUL_SERVANT:
+        return { bg: 'bg-indigo-100', border: 'border-indigo-300', text: 'text-indigo-800', badge: 'bg-indigo-600' };
+      case CardType.LEVEL_UP:
+        return { bg: 'bg-cyan-100', border: 'border-cyan-300', text: 'text-cyan-800', badge: 'bg-cyan-600' };
       default:
         return { bg: 'bg-gray-100', border: 'border-gray-300', text: 'text-gray-800', badge: 'bg-gray-600' };
     }
@@ -74,6 +78,10 @@ const CardThumbnail: React.FC<CardThumbnailProps> = ({ card, onClick, isSelected
         return '🎭';
       case CardType.RACE:
         return '🧝';
+      case CardType.FAITHFUL_SERVANT:
+        return '🐕';
+      case CardType.LEVEL_UP:
+        return '🆙';
       default:
         return '📜';
     }
@@ -123,7 +131,7 @@ const CardThumbnail: React.FC<CardThumbnailProps> = ({ card, onClick, isSelected
           {card.level}
         </div>
       )}
-      {card.type === CardType.ITEM && card.bonus !== '' && (
+      {(card.type === CardType.ITEM || card.type === CardType.FAITHFUL_SERVANT || card.type === CardType.LEVEL_UP) && card.bonus !== '' && (
         <div className="absolute top-2 left-2 bg-amber-700 text-white text-xs font-bold w-8 h-8 rounded-full flex items-center justify-center shadow-sm">
           +{card.bonus}
         </div>
@@ -143,7 +151,7 @@ const CardThumbnail: React.FC<CardThumbnailProps> = ({ card, onClick, isSelected
 
       {/* Hover overlay */}
       <div className="absolute inset-0 bg-amber-500/0 group-hover:bg-amber-500/10 transition-colors duration-200" />
-      
+
       {/* Click indicator */}
       <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
         <div className="bg-white/90 rounded-full p-2 shadow-lg">
