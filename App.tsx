@@ -3,6 +3,7 @@ import CardForm from './components/CardForm';
 import CardPreview from './components/CardPreview';
 import DeckStats from './components/DeckStats';
 import CardGallery from './components/CardGallery';
+import CardList from './components/CardList';
 import ImportModal from './components/ImportModal';
 import { CardData, INITIAL_CARD_DATA } from './types';
 import { saveCardToSheet, fetchCardsFromSheet } from './services/sheetService';
@@ -147,7 +148,7 @@ const App: React.FC = () => {
   const [scriptUrl, setScriptUrl] = useState<string>("");
   const [showSettings, setShowSettings] = useState(false);
   const [activeTab, setActiveTab] = useState<'config' | 'code'>('config'); // Nouvel état pour les onglets modal settings
-  const [activeView, setActiveView] = useState<'editor' | 'gallery'>('editor'); // Nouvel état pour la navigation principale
+  const [activeView, setActiveView] = useState<'editor' | 'gallery' | 'list'>('editor'); // Nouvel état pour la navigation principale
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingList, setIsLoadingList] = useState(false);
   const [configError, setConfigError] = useState<string | null>(null);
@@ -286,8 +287,8 @@ const App: React.FC = () => {
             <button
               onClick={() => setActiveView('editor')}
               className={`px-6 py-2 font-bold text-sm rounded-t-lg transition-all ${activeView === 'editor'
-                  ? 'bg-stone-100 text-amber-900 shadow-sm'
-                  : 'bg-amber-800/50 text-amber-200 hover:bg-amber-800 hover:text-white'
+                ? 'bg-stone-100 text-amber-900 shadow-sm'
+                : 'bg-amber-800/50 text-amber-200 hover:bg-amber-800 hover:text-white'
                 }`}
             >
               <span className="mr-2">✏️</span>
@@ -296,8 +297,8 @@ const App: React.FC = () => {
             <button
               onClick={() => setActiveView('gallery')}
               className={`px-6 py-2 font-bold text-sm rounded-t-lg transition-all flex items-center gap-2 ${activeView === 'gallery'
-                  ? 'bg-stone-100 text-amber-900 shadow-sm'
-                  : 'bg-amber-800/50 text-amber-200 hover:bg-amber-800 hover:text-white'
+                ? 'bg-stone-100 text-amber-900 shadow-sm'
+                : 'bg-amber-800/50 text-amber-200 hover:bg-amber-800 hover:text-white'
                 }`}
             >
               <span>🎴</span>
@@ -308,6 +309,16 @@ const App: React.FC = () => {
                   {savedCards.length}
                 </span>
               )}
+            </button>
+            <button
+              onClick={() => setActiveView('list')}
+              className={`px-6 py-2 font-bold text-sm rounded-t-lg transition-all flex items-center gap-2 ${activeView === 'list'
+                ? 'bg-stone-100 text-amber-900 shadow-sm'
+                : 'bg-amber-800/50 text-amber-200 hover:bg-amber-800 hover:text-white'
+                }`}
+            >
+              <span>📋</span>
+              Liste
             </button>
           </nav>
         </div>
@@ -489,7 +500,7 @@ const App: React.FC = () => {
               </div>
             </div>
           </div>
-        ) : (
+        ) : activeView === 'gallery' ? (
           /* Gallery View */
           <CardGallery
             cards={savedCards}
@@ -497,6 +508,13 @@ const App: React.FC = () => {
             onNewCard={handleNewCard}
             isLoading={isLoadingList}
             selectedCardId={cardData.id}
+          />
+        ) : (
+          /* List View */
+          <CardList
+            cards={savedCards}
+            onSelectCard={handleSelectCard}
+            isLoading={isLoadingList}
           />
         )}
       </main>
