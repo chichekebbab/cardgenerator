@@ -7,10 +7,12 @@ export enum CardType {
   RACE = 'Race',
   LEVEL_UP = 'Gain de niveau',
   FAITHFUL_SERVANT = 'Fidèle serviteur',
+  DUNGEON_TRAP = 'Piège Donjon',
+  TREASURE_TRAP = 'Piège Trésor',
   OTHER = 'Autre'
 }
 
-export type CardLayout = 'standard' | 'classic' | 'modern';
+export type CardLayout = 'standard';
 
 export interface CardData {
   id: string; // Identifiant unique pour la persistance
@@ -36,6 +38,7 @@ export interface CardData {
   imageOffsetY?: number; // Décalage vertical en %
   isBaseCard: boolean;
   isValidated: boolean;
+  internalComment: string;
 }
 
 export const INITIAL_CARD_DATA: CardData = {
@@ -60,4 +63,5 @@ export const INITIAL_CARD_DATA: CardData = {
   imageOffsetY: 0,
   isBaseCard: false,
   isValidated: false,
+  internalComment: '',
 };

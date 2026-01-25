@@ -19,6 +19,8 @@ const CARD_TYPE_ORDER: CardType[] = [
   CardType.RACE,
   CardType.LEVEL_UP,
   CardType.FAITHFUL_SERVANT,
+  CardType.DUNGEON_TRAP,
+  CardType.TREASURE_TRAP,
   CardType.OTHER,
 ];
 
@@ -39,6 +41,10 @@ const getSectionStyle = (type: CardType) => {
       return { bg: 'bg-cyan-50', border: 'border-cyan-200', header: 'bg-cyan-600', icon: '🆙' };
     case CardType.FAITHFUL_SERVANT:
       return { bg: 'bg-indigo-50', border: 'border-indigo-200', header: 'bg-indigo-600', icon: '🐕' };
+    case CardType.DUNGEON_TRAP:
+      return { bg: 'bg-rose-50', border: 'border-rose-200', header: 'bg-rose-600', icon: '🕸️' };
+    case CardType.TREASURE_TRAP:
+      return { bg: 'bg-emerald-50', border: 'border-emerald-200', header: 'bg-emerald-600', icon: '💣' };
     default:
       return { bg: 'bg-gray-50', border: 'border-gray-200', header: 'bg-gray-600', icon: '📜' };
   }
@@ -66,7 +72,8 @@ const CardGallery: React.FC<CardGalleryProps> = ({
       result = result.filter(card =>
         card.title.toLowerCase().includes(query) ||
         card.description.toLowerCase().includes(query) ||
-        card.type.toLowerCase().includes(query)
+        card.type.toLowerCase().includes(query) ||
+        (card.internalComment && card.internalComment.toLowerCase().includes(query))
       );
     }
 

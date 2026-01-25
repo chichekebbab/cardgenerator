@@ -97,6 +97,7 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data }) => {
         }
         if (data.type === CardType.LEVEL_UP) return 'layout_lvlup.png';
         if (data.type === CardType.FAITHFUL_SERVANT) return 'layout_malediction.png';
+        if (data.type === CardType.DUNGEON_TRAP || data.type === CardType.TREASURE_TRAP) return 'layout_malediction.png';
         return 'layout_monstre.png';
     }, [data.type, data.itemSlot, data.isBig]);
 
@@ -370,6 +371,14 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data }) => {
                     value: data.bonus !== '' ? `+${data.bonus}` : '',
                     textColor: 'text-white'
                 };
+            case CardType.DUNGEON_TRAP:
+            case CardType.TREASURE_TRAP:
+                return {
+                    style: baseStyle,
+                    label: 'BONUS',
+                    value: data.bonus !== '' ? `+${data.bonus}` : '',
+                    textColor: 'text-white'
+                };
             default:
                 return { style: baseStyle, label: '', value: '', textColor: 'text-white' };
         }
@@ -463,9 +472,8 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data }) => {
                         </h2>
                     </div>
 
-                    {/* 3. DESCRIPTION - Masqué pour LEVEL_UP */}
-                    {/* Commence à 60;229, largeur jusqu'à 600, hauteur max jusqu'à 500 */}
-                    {data.type !== CardType.LEVEL_UP && (
+                    {/* 3. DESCRIPTION - Masquée pour LEVEL_UP si vide */}
+                    {(data.type !== CardType.LEVEL_UP || data.description.trim() !== '') && (
                         <div className="absolute z-30"
                             ref={descriptionRef}
                             style={{
@@ -492,7 +500,7 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data }) => {
                                 {data.restrictions && (
                                     <div className="font-bold uppercase mb-1">{data.restrictions}</div>
                                 )}
-                                <p>{data.description}</p>
+                                {data.description && data.description.trim() !== '' && <p>{data.description}</p>}
                                 {/* Affichage de l'Incident Fâcheux ou Effect si applicable */}
                                 {(data.type === CardType.MONSTER && data.badStuff) && (
                                     <div className="mt-2 text-left border-t border-black/20 pt-1">
@@ -550,10 +558,10 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data }) => {
                         )}
                     </div>
 
-                    {/* COIN DROIT (440;914) : Trésor / Or - Masqué pour LEVEL_UP et FAITHFUL_SERVANT */}
-                    {data.type !== CardType.LEVEL_UP && data.type !== CardType.FAITHFUL_SERVANT && (
+                    {/* COIN DROIT (390;914) : Trésor / Or - Masqué pour FAITHFUL_SERVANT */}
+                    {data.type !== CardType.FAITHFUL_SERVANT && (
                         <div className="absolute z-30 flex flex-col items-start"
-                            style={{ left: scaleX(440), top: scaleY(914) }}>
+                            style={{ left: scaleX(390), top: scaleY(914) }}>
 
                             <span className="font-medieval font-bold text-[#682A22] whitespace-nowrap block"
                                 style={{ fontSize: '0.9rem' }}>
@@ -561,7 +569,7 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data }) => {
                                     <>
                                         {data.type === CardType.ITEM && "Sans Valeur"}
                                         {data.type === CardType.MONSTER && "Pas de Trésor"}
-                                        {data.type !== CardType.ITEM && data.type !== CardType.MONSTER && (
+                                        {data.type !== CardType.ITEM && data.type !== CardType.MONSTER && data.type !== CardType.DUNGEON_TRAP && data.type !== CardType.TREASURE_TRAP && (
                                             <span className="opacity-80">{data.type}</span>
                                         )}
                                     </>
@@ -575,138 +583,12 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data }) => {
         );
     };
 
-    // --- RENDU : TYPE 2 (CLASSIC / VINTAGE) ---
-    const renderClassicLayout = () => (
-        <div
-            ref={cardRef}
-            className={`relative w-[320px] h-[500px] rounded-[16px] bg-parchment-body overflow-hidden shadow-card border-[2px] border-black`}
-        >
-            <div className={`absolute inset-0 pointer-events-none border-[12px] ${colors.border} rounded-[14px] opacity-20`}></div>
-            <div className="h-full flex flex-col relative z-10 p-4 pt-3">
-                <div className="relative flex justify-center items-center mb-1 min-h-[40px]">
-                    {data.type === CardType.ITEM && data.bonus !== '' && (
-                        <div className="absolute -top-1 -left-1 w-12 h-12 bg-cover bg-center flex items-center justify-center z-20" style={{ backgroundImage: "url('https://www.svgrepo.com/show/309192/shield.svg')", filter: 'drop-shadow(1px 1px 1px rgba(0,0,0,0.5))' }}>
-                            <div className="text-white font-munchkin-title font-bold text-lg mt-[-2px] ml-[1px]">+{data.bonus}</div>
-                        </div>
-                    )}
-                    {data.type === CardType.ITEM && data.bonus !== '' && (
-                        <div className="absolute -top-1 -right-1 w-12 h-12 bg-cover bg-center flex items-center justify-center z-20 scale-x-[-1]" style={{ backgroundImage: "url('https://www.svgrepo.com/show/309192/shield.svg')", filter: 'drop-shadow(1px 1px 1px rgba(0,0,0,0.5))' }}>
-                            <div className="text-white font-munchkin-title font-bold text-lg mt-[-2px] mr-[1px] scale-x-[-1]">+{data.bonus}</div>
-                        </div>
-                    )}
-                    <h2 className={`font-munchkin-title text-[1.4rem] text-center font-bold uppercase leading-[1.2] ${colors.text} bg-white/50 px-4 py-1 rounded shadow-sm border border-black/10 w-full mx-6`}>
-                        {data.title}
-                    </h2>
-                </div>
-                {data.type === CardType.MONSTER && data.level !== '' && (
-                    <div className="flex justify-center -mt-2 mb-1 relative z-20">
-                        <div className="bg-[#8b0000] text-white px-3 py-0.5 clip-polygon shadow-md border border-black">
-                            <span className="font-munchkin-title text-xs uppercase font-bold mr-1">Niveau</span>
-                            <span className="font-munchkin-title text-xl font-bold">{data.level}</span>
-                        </div>
-                    </div>
-                )}
-                <div className="relative px-2 py-1 shrink-0 mb-2">
-                    <div className="border-4 border-black/80 rounded-sm bg-white p-0.5 shadow-md transform rotate-[0.5deg]">
-                        <CardImage />
-                    </div>
-                </div>
-                <div className="flex-grow flex flex-col text-center font-munchkin-body text-[#1a1a1a]">
-                    {data.restrictions && (
-                        <div className="font-bold text-xs uppercase mb-1">{data.restrictions}</div>
-                    )}
-                    <div className="text-[14px] leading-snug px-1 overflow-y-auto">
-                        {data.description}
-                    </div>
-                    {data.type === CardType.MONSTER && data.badStuff && (
-                        <div className="mt-auto pt-2 text-left px-2">
-                            <span className="font-bold text-sm block">Incident Fâcheux :</span>
-                            <span className="italic text-sm leading-tight">{data.badStuff}</span>
-                        </div>
-                    )}
-                </div>
-                <div className="shrink-0 mt-2 pt-2 border-t-2 border-black flex justify-between items-end font-munchkin-title font-bold text-xs">
-                    <div className="flex-1 text-left flex flex-col relative">
-                        {data.type === CardType.ITEM && (
-                            <div className="relative">
-                                {data.isBig && <span className="absolute bottom-full left-0 mb-[-2px]">Gros</span>}
-                                <span>{data.itemSlot || '\u00A0'}</span>
-                            </div>
-                        )}
-                    </div>
-                    <div className="flex-[2] text-center text-xs whitespace-nowrap">{data.gold}</div>
-                    <div className="flex-1 text-right">
-                        {data.type !== CardType.ITEM ? <span className="opacity-60">{data.type}</span> : ''}
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
 
-    // --- RENDU : TYPE 3 (MODERN) ---
-    const renderModernLayout = () => (
-        <div
-            ref={cardRef}
-            className={`relative w-[320px] h-[500px] rounded-[12px] bg-slate-900 overflow-hidden shadow-2xl flex flex-col`}
-        >
-            <div className="h-[55%] relative w-full shrink-0">
-                <CardImage className="h-full w-full object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent"></div>
-                {data.type === CardType.MONSTER && data.level !== '' && (
-                    <div className="absolute top-2 right-2 bg-red-600 text-white w-12 h-12 flex flex-col items-center justify-center rounded-full shadow-lg border-2 border-white">
-                        <span className="text-[8px] font-bold uppercase leading-none">NIV</span>
-                        <span className="text-xl font-bold leading-none">{data.level}</span>
-                    </div>
-                )}
-                {data.type === CardType.ITEM && data.bonus !== '' && (
-                    <div className="absolute top-2 right-2 bg-blue-600 text-white w-12 h-12 flex flex-col items-center justify-center rounded-full shadow-lg border-2 border-white">
-                        <span className="text-[8px] font-bold uppercase leading-none">BONUS</span>
-                        <span className="text-xl font-bold leading-none">+{data.bonus}</span>
-                    </div>
-                )}
-            </div>
-            <div className="flex-grow flex flex-col p-4 pt-0 relative z-10">
-                <div className="-mt-8 mb-4 self-center">
-                    <h2 className={`bg-amber-100 text-slate-900 font-munchkin-title text-xl font-bold px-4 py-2 rounded shadow-lg border-2 border-slate-700 text-center uppercase tracking-wide leading-[1.2]`}>
-                        {data.title}
-                    </h2>
-                </div>
-                <div className="flex-grow text-slate-200 text-center font-sans text-sm space-y-2 overflow-y-auto">
-                    {data.restrictions && (
-                        <div className="text-amber-400 font-bold text-xs uppercase tracking-widest border-b border-slate-700 pb-1">
-                            {data.restrictions}
-                        </div>
-                    )}
-                    <p className="leading-relaxed">{data.description}</p>
-                    {data.type === CardType.MONSTER && data.badStuff && (
-                        <div className="bg-red-900/30 p-2 rounded border border-red-800 text-left mt-2">
-                            <span className="text-red-400 font-bold text-xs uppercase block mb-1">Incident Fâcheux</span>
-                            <p className="text-xs italic text-red-100">{data.badStuff}</p>
-                        </div>
-                    )}
-                </div>
-                <div className="mt-4 pt-3 border-t border-slate-700 flex justify-between text-xs font-bold text-slate-400 uppercase">
-                    <div className="flex-1 flex flex-col relative">
-                        {data.type === CardType.ITEM && (
-                            <div className="relative">
-                                {data.isBig && <span className="absolute bottom-full left-0">GROS</span>}
-                                <span>{data.itemSlot || '\u00A0'}</span>
-                            </div>
-                        )}
-                    </div>
-                    <div className="text-amber-500 flex-[2] text-center whitespace-nowrap">{data.gold}</div>
-                    <div className="flex-1 text-right">{data.type !== CardType.ITEM ? data.type : ''}</div>
-                </div>
-            </div>
-        </div>
-    );
 
     return (
         <div className="flex flex-col items-center justify-center p-8 bg-wood-pattern min-h-[600px] gap-8">
 
-            {(!data.layout || data.layout === 'standard') && renderStandardLayout()}
-            {data.layout === 'classic' && renderClassicLayout()}
-            {data.layout === 'modern' && renderModernLayout()}
+            {renderStandardLayout()}
 
             <button
                 onClick={handleDownload}

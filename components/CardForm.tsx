@@ -88,30 +88,7 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
 
       <div className="space-y-4">
 
-        {/* Layout Selector */}
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">Mise en page (Layout)</label>
-          <div className="flex bg-gray-100 p-1 rounded-lg border border-gray-300">
-            <button
-              onClick={() => handleChange('layout', 'standard')}
-              className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${cardData.layout === 'standard' || !cardData.layout ? 'bg-white text-amber-700 shadow' : 'text-gray-500 hover:text-gray-700'}`}
-            >
-              Type 1 (Standard)
-            </button>
-            <button
-              onClick={() => handleChange('layout', 'classic')}
-              className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${cardData.layout === 'classic' ? 'bg-white text-amber-700 shadow' : 'text-gray-500 hover:text-gray-700'}`}
-            >
-              Type 2 (Classique)
-            </button>
-            <button
-              onClick={() => handleChange('layout', 'modern')}
-              className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${cardData.layout === 'modern' ? 'bg-white text-amber-700 shadow' : 'text-gray-500 hover:text-gray-700'}`}
-            >
-              Type 3 (Moderne)
-            </button>
-          </div>
-        </div>
+
 
         {/* Basic Info */}
         <div className="grid grid-cols-2 gap-4">
@@ -124,7 +101,8 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
                 onChange({
                   ...cardData,
                   type: newType,
-                  bonus: newType === CardType.LEVEL_UP ? 1 : cardData.bonus
+                  bonus: newType === CardType.LEVEL_UP ? 1 : (newType === CardType.DUNGEON_TRAP || newType === CardType.TREASURE_TRAP) ? '' : cardData.bonus,
+                  gold: (newType === CardType.DUNGEON_TRAP || newType === CardType.TREASURE_TRAP) ? '' : cardData.gold
                 });
               }}
               className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
@@ -158,7 +136,7 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
               />
             </div>
           )}
-          {(cardData.type === CardType.ITEM || cardData.type === CardType.LEVEL_UP || cardData.type === CardType.FAITHFUL_SERVANT) && (
+          {(cardData.type === CardType.ITEM || cardData.type === CardType.LEVEL_UP || cardData.type === CardType.FAITHFUL_SERVANT || cardData.type === CardType.DUNGEON_TRAP || cardData.type === CardType.TREASURE_TRAP) && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Bonus</label>
               <input
@@ -371,6 +349,21 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
             />
           </div>
         )}
+
+        {/* Review / Internal Comments */}
+        <div className="border-t border-gray-100 pt-4 mt-4">
+          <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-2">
+            <span>📝 Commentaire Interne (Review)</span>
+            <span className="text-[10px] font-normal text-gray-500 bg-gray-100 px-2 py-0.5 rounded">Ne s'affiche pas sur la carte</span>
+          </label>
+          <textarea
+            value={cardData.internalComment || ''}
+            onChange={(e) => handleChange('internalComment', e.target.value)}
+            rows={3}
+            placeholder="Notes de review, suggestions de modifications..."
+            className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-gray-400 focus:border-gray-400 bg-gray-50/50 italic"
+          />
+        </div>
 
       </div>
 
