@@ -6,7 +6,7 @@ import CardGallery from './components/CardGallery';
 import CardList from './components/CardList';
 import ImportModal from './components/ImportModal';
 import { CardData, INITIAL_CARD_DATA } from './types';
-import { saveCardToSheet, fetchCardsFromSheet } from './services/sheetService';
+import { saveCardToSheet, fetchCardsFromSheet, deleteCardFromSheet } from './services/sheetService';
 
 const GOOGLE_SCRIPT_TEMPLATE = `// CODE À COPIER DANS VOTRE GOOGLE APPS SCRIPT (fichier Code.gs)
 
@@ -124,6 +124,25 @@ function handleRequest(e) {
 
       return responseJSON({ status: 'success', imageUrl: imageUrl });
     }
+
+    if (data.action === 'delete') {
+      const cardId = data.cardId;
+      const allData = sheet.getDataRange().getValues();
+      let rowIndex = -1;
+
+      for (let i = 1; i < allData.length; i++) {
+        if (allData[i][0] == cardId) {
+          rowIndex = i + 1;
+          break;
+        }
+      }
+
+      if (rowIndex > 0) {
+        sheet.deleteRow(rowIndex);
+        return responseJSON({ status: 'success' });
+      }
+      return responseJSON({ status: 'error', message: 'Carte non trouvée' });
+    }
     
     return responseJSON({ status: 'error', message: 'Action inconnue' });
 
@@ -213,6 +232,44 @@ const App: React.FC = () => {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleDeleteCard = async () => {
+    if (!confirm("Êtes-vous sûr de vouloir supprimer cette carte ?")) return;
+
+    if (!scriptUrl) {
+      // Si pas de script URL, on supprime juste de l'état local (si c'est dans la liste)
+      setSavedCards(prev => prev.filter(c => c.id !== cardData.id));
+      handleNewCard();
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await deleteCardFromSheet(scriptUrl, cardData.id);
+      await loadSavedCards(scriptUrl);
+      handleNewCard();
+      alert("Carte supprimée !");
+    } catch (e: any) {
+      alert("Erreur lors de la suppression : " + e.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDuplicateCard = () => {
+    const newId = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString();
+    const duplicatedCard = {
+      ...cardData,
+      id: newId,
+      title: cardData.title ? `${cardData.title} (Copie)` : "Copie",
+      imageData: null, // On ne duplique pas l'image
+      storedImageUrl: undefined // On ne duplique pas l'image stockée
+    };
+    setCardData(duplicatedCard);
+    // On reste sur l'éditeur pour modifier la copie
+    setActiveView('editor');
+    alert("Carte dupliquée ! Vous éditez maintenant la copie.");
   };
 
   const handleNewCard = () => {
@@ -529,6 +586,8 @@ const App: React.FC = () => {
                   onChange={setCardData}
                   onSave={handleSaveCard}
                   onNew={handleNewCard}
+                  onDuplicate={handleDuplicateCard}
+                  onDelete={handleDeleteCard}
                   onImport={() => setShowImportModal(true)}
                   isSaving={isSaving}
                   hasScriptUrl={!!scriptUrl}

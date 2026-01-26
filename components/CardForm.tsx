@@ -7,6 +7,8 @@ interface CardFormProps {
   onChange: (data: CardData) => void;
   onSave: () => void;
   onNew: () => void;
+  onDuplicate: () => void;
+  onDelete: () => void;
   isSaving: boolean;
   hasScriptUrl: boolean;
   onImport: () => void;
@@ -15,7 +17,7 @@ interface CardFormProps {
 // Pré-prompt technique imposé (ne change jamais)
 const FIXED_PRE_PROMPT = "Génère une illustration au format carré (1x1). Le style artistique doit imiter parfaitement celui du jeu de cartes 'Munchkin' et du dessinateur John Kovalic : un style cartoon satirique, dessiné à la main, avec des contours noirs épais et une ambiance humoristique de fantasy. L'image doit présenter un seul élément isolé, centré. Il ne doit y avoir absolument aucun texte sur l'image. Le fond doit être une couleur unie, neutre et simple, sans aucun décor ni détail. Voici l'élément à générer :";
 
-const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, isSaving, hasScriptUrl, onImport }) => {
+const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, onDuplicate, onDelete, isSaving, hasScriptUrl, onImport }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -63,19 +65,34 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
             Nouvelle Carte
           </button>
           <button
+            onClick={onDuplicate}
+            className="px-3 py-1 text-sm text-gray-600 bg-gray-100 hover:bg-gray-200 rounded border border-gray-300 transition-colors"
+          >
+            Dupliquer
+          </button>
+          <button
             onClick={onImport}
             className="flex items-center gap-2 px-3 py-1 text-sm text-gray-600 bg-gray-100 hover:bg-gray-200 rounded border border-gray-300 transition-colors"
           >
             📥 Import via JSON
           </button>
           {hasScriptUrl && (
-            <button
-              onClick={onSave}
-              disabled={isSaving}
-              className="flex items-center gap-2 px-4 py-1 text-sm font-bold text-white bg-green-600 hover:bg-green-700 rounded shadow transition-colors disabled:opacity-50"
-            >
-              {isSaving ? 'Sauvegarde...' : '💾 Sauvegarder'}
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={onDelete}
+                disabled={isSaving}
+                className="px-3 py-1 text-sm text-red-600 bg-red-50 hover:bg-red-100 rounded border border-red-200 transition-colors disabled:opacity-50"
+              >
+                🗑️ Supprimer
+              </button>
+              <button
+                onClick={onSave}
+                disabled={isSaving}
+                className="flex items-center gap-2 px-4 py-1 text-sm font-bold text-white bg-green-600 hover:bg-green-700 rounded shadow transition-colors disabled:opacity-50"
+              >
+                {isSaving ? 'Sauvegarde...' : '💾 Sauvegarder'}
+              </button>
+            </div>
           )}
         </div>
       </div>
