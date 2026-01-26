@@ -96,7 +96,10 @@ const CardThumbnail: React.FC<CardThumbnailProps> = ({ card, onClick, isSelected
         hover:scale-105 hover:shadow-xl hover:z-10
         focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2
         ${isSelected ? 'ring-2 ring-amber-500 scale-105 shadow-xl' : 'shadow-md'}
-        ${colors.bg} ${colors.border} border-2
+        ${card.isValidated
+          ? 'ring-4 ring-yellow-400 shadow-[0_0_20px_rgba(234,179,8,0.5)] border-yellow-400 border-4'
+          : `${colors.bg} ${colors.border} border-2`
+        }
       `}
     >
       {/* Image area */}
@@ -119,6 +122,14 @@ const CardThumbnail: React.FC<CardThumbnailProps> = ({ card, onClick, isSelected
 
       {/* Gradient overlay for text readability */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+
+      {/* Validated badge (top left) */}
+      {card.isValidated && (
+        <div className="absolute top-2 left-2 bg-gradient-to-r from-yellow-400 to-yellow-500 text-yellow-900 text-[10px] font-bold px-2 py-1 rounded-full shadow-lg flex items-center gap-1 z-10 animate-pulse">
+          <span>✓</span>
+          <span>Validée</span>
+        </div>
+      )}
 
       {/* Type badge */}
       <div className={`absolute top-2 right-2 ${colors.badge} text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm`}>
