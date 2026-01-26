@@ -9,10 +9,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "react": "^19.2.3",
-    "react-dom": "^19.2.3",
     "@google/genai": "^1.37.0",
-    "html2canvas": "1.4.1"
+    "html-to-image": "^1.11.13",
+    "html2canvas": "1.4.1",
+    "jszip": "^3.10.1",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { CardData, CardType } from '../types';
 import CardThumbnail from './CardThumbnail';
+import BatchExportRenderer from './BatchExportRenderer';
 
 interface CardGalleryProps {
   cards: CardData[];
@@ -61,6 +62,8 @@ const CardGallery: React.FC<CardGalleryProps> = ({
   const [collapsedSections, setCollapsedSections] = useState<Set<CardType>>(new Set());
   const [filterBase, setFilterBase] = useState<'all' | 'oui' | 'non'>('all');
   const [filterValidated, setFilterValidated] = useState<'all' | 'oui' | 'non'>('all');
+  const [isExportingAll, setIsExportingAll] = useState(false);
+  const [exportProgress, setExportProgress] = useState({ current: 0, total: 0 });
 
   // Filter cards based on search query and filters
   const filteredCards = useMemo(() => {
@@ -233,6 +236,25 @@ const CardGallery: React.FC<CardGalleryProps> = ({
           </div>
 
           {/* New Card Button */}
+          {filteredCards.length > 0 && (
+            <button
+              onClick={() => {
+                setExportProgress({ current: 0, total: filteredCards.length });
+                setIsExportingAll(true);
+              }}
+              disabled={isExportingAll}
+              className="hidden sm:flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg shadow-md transition-colors whitespace-nowrap"
+            >
+              {isExportingAll ? (
+                <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+              )}
+              <span>Exporter ({filteredCards.length})</span>
+            </button>
+          )}
           <button
             onClick={onNewCard}
             className="flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg shadow-md transition-colors whitespace-nowrap"
@@ -452,6 +474,34 @@ const CardGallery: React.FC<CardGalleryProps> = ({
           </div>
         )
       }
+
+      {/* Batch Export Renderer and Overlay */}
+      {isExportingAll && (
+        <>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+            <div className="bg-white rounded-xl p-8 shadow-2xl max-w-sm w-full text-center">
+              <h3 className="text-xl font-bold text-gray-800 mb-4">Export en cours...</h3>
+              <div className="w-full bg-gray-200 rounded-full h-4 mb-2 overflow-hidden">
+                <div
+                  className="bg-green-600 h-full transition-all duration-300 ease-out"
+                  style={{ width: `${(exportProgress.current / (exportProgress.total || 1)) * 100}%` }}
+                />
+              </div>
+              <div className="flex justify-between text-sm text-gray-600">
+                <span>Carte {exportProgress.current} / {exportProgress.total}</span>
+                <span>{Math.round((exportProgress.current / (exportProgress.total || 1)) * 100)}%</span>
+              </div>
+              <p className="text-xs text-gray-400 mt-4">Veuillez patienter pendant la génération du fichier ZIP.</p>
+            </div>
+          </div>
+
+          <BatchExportRenderer
+            cards={filteredCards}
+            onComplete={() => setIsExportingAll(false)}
+            onProgress={(current, total) => setExportProgress({ current, total })}
+          />
+        </>
+      )}
     </div >
   );
 };

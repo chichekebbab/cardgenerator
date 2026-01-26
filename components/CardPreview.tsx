@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { CardData, CardType } from '../types';
-import html2canvas from 'html2canvas';
+import { toPng } from 'html-to-image';
+import ExportCardRenderer from './ExportCardRenderer';
 
 interface CardPreviewProps {
     data: CardData;
@@ -8,6 +9,7 @@ interface CardPreviewProps {
 
 const CardPreview: React.FC<CardPreviewProps> = ({ data }) => {
     const cardRef = useRef<HTMLDivElement>(null);
+    const exportRef = useRef<HTMLDivElement>(null);
     const [isDownloading, setIsDownloading] = useState(false);
 
     // States pour l'image centrale (Art)
@@ -155,140 +157,35 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data }) => {
     };
 
     const handleDownload = async () => {
-        if (!cardRef.current) return;
         setIsDownloading(true);
 
         try {
-            await document.fonts.ready;
-            await new Promise(resolve => setTimeout(resolve, 200)); // Petit délai pour assurer le rendu
+            // Attendre le rendu du composant d'export
+            await new Promise(resolve => setTimeout(resolve, 500));
 
-            const cardElement = cardRef.current;
-            const cardRect = cardElement.getBoundingClientRect();
-
-            // Pre-calculate positions using index-based matching (more reliable than class name matching)
-            const transformedPositions: Array<{ top: number; left: number; width: number; height: number }> = [];
-
-            // Find all elements with transform class
-            const allTransformed = cardElement.querySelectorAll('[class*="transform"]');
-
-            allTransformed.forEach((el) => {
-                const htmlEl = el as HTMLElement;
-                const rect = htmlEl.getBoundingClientRect();
-                const computedStyle = window.getComputedStyle(htmlEl);
-
-                // Only process elements that actually have a transform applied
-                if (computedStyle.transform && computedStyle.transform !== 'none') {
-                    transformedPositions.push({
-                        top: rect.top - cardRect.top,
-                        left: rect.left - cardRect.left,
-                        width: rect.width,
-                        height: rect.height
-                    });
-                }
-            });
-
-            // Capture art image: Calculate position relative to the CARD, not the parent
-            // The image is scaled and positioned via transform, we need its visual center position
-            const artImage = cardElement.querySelector('img[alt="Art"]') as HTMLImageElement;
-            let artImageData: {
-                visualTop: number;
-                visualLeft: number;
-                visualWidth: number;
-                visualHeight: number;
-                containerWidth: number;
-                containerHeight: number;
-            } | null = null;
-
-            if (artImage) {
-                const imgRect = artImage.getBoundingClientRect();
-                // Get the overflow-visible container (image's grandparent in the layout)
-                const container = artImage.closest('.overflow-visible') as HTMLElement;
-                const containerRect = container?.getBoundingClientRect();
-
-                if (containerRect) {
-                    // Calculate where the image visually appears relative to its container
-                    artImageData = {
-                        visualTop: imgRect.top - containerRect.top,
-                        visualLeft: imgRect.left - containerRect.left,
-                        visualWidth: imgRect.width,
-                        visualHeight: imgRect.height,
-                        containerWidth: containerRect.width,
-                        containerHeight: containerRect.height
-                    };
-                }
+            if (!exportRef.current) {
+                console.error("Export ref not found");
+                return;
             }
 
-            const canvas = await html2canvas(cardRef.current, {
-                scale: 3,
-                useCORS: true,
-                allowTaint: true,
-                backgroundColor: null,
-                logging: false,
-                onclone: (clonedDoc, clonedElement) => {
-                    // Find all transformed elements in clone (same order as original)
-                    const clonedTransformed = clonedElement.querySelectorAll('[class*="transform"]');
-                    let dataIndex = 0;
-
-                    clonedTransformed.forEach((clonedEl) => {
-                        const htmlEl = clonedEl as HTMLElement;
-                        const computedStyle = window.getComputedStyle(htmlEl);
-
-                        // Check if this element has a transform
-                        if (computedStyle.transform && computedStyle.transform !== 'none') {
-                            const posData = transformedPositions[dataIndex];
-                            dataIndex++;
-
-                            if (posData) {
-                                // Apply the pre-calculated position and remove transform
-                                htmlEl.style.transform = 'none';
-                                htmlEl.style.top = `${posData.top}px`;
-                                htmlEl.style.left = `${posData.left}px`;
-                            }
-                        }
-                    });
-
-                    // Fix art image - make it fill its container at natural aspect ratio
-                    if (artImageData) {
-                        const clonedArtImg = clonedElement.querySelector('img[alt="Art"]') as HTMLImageElement;
-                        const clonedContainer = clonedArtImg?.closest('.overflow-visible') as HTMLElement;
-
-                        if (clonedArtImg && clonedContainer) {
-                            // Center the image in the container at its current visual size
-                            const offsetX = (artImageData.containerWidth - artImageData.visualWidth) / 2 + artImageData.visualLeft + artImageData.visualWidth / 2 - artImageData.containerWidth / 2;
-                            const offsetY = (artImageData.containerHeight - artImageData.visualHeight) / 2 + artImageData.visualTop + artImageData.visualHeight / 2 - artImageData.containerHeight / 2;
-
-                            clonedArtImg.style.transform = 'none';
-                            clonedArtImg.style.width = `${artImageData.visualWidth}px`;
-                            clonedArtImg.style.height = `${artImageData.visualHeight}px`;
-                            clonedArtImg.style.position = 'absolute';
-                            clonedArtImg.style.top = `${artImageData.visualTop}px`;
-                            clonedArtImg.style.left = `${artImageData.visualLeft}px`;
-                            clonedArtImg.style.objectFit = 'fill';
-                            clonedArtImg.style.maxWidth = 'none';
-                            clonedArtImg.style.maxHeight = 'none';
-
-                            // Ensure container has overflow visible for the positioned image
-                            clonedContainer.style.overflow = 'visible';
-                        }
-                    }
-                }
+            // Utiliser html-to-image qui gère mieux les CSS transforms
+            const dataUrl = await toPng(exportRef.current, {
+                quality: 1.0,
+                pixelRatio: 1,
+                cacheBust: true
             });
 
-            try {
-                const image = canvas.toDataURL("image/png");
-                const link = document.createElement("a");
-                const cleanTitle = (data.title || "carte-munchkin").replace(/[^a-z0-9]/gi, '_').toLowerCase();
-                link.href = image;
-                link.download = `${cleanTitle}.png`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            } catch (e) {
-                alert("Problème CORS: L'image ne peut pas être sauvegardée.");
-            }
+            const cleanTitle = (data.title || "carte-munchkin").replace(/[^a-z0-9]/gi, '_').toLowerCase();
+
+            const link = document.createElement("a");
+            link.href = dataUrl;
+            link.download = `${cleanTitle}.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         } catch (err) {
             console.error("Erreur lors du téléchargement :", err);
-            alert("Impossible de générer l'image.");
+            alert("Impossible de générer l'image. Vérifiez que toutes les images sont chargées.");
         } finally {
             setIsDownloading(false);
         }
@@ -613,6 +510,15 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data }) => {
             clip-path: polygon(0 0, 100% 0, 95% 100%, 5% 100%);
         }
       `}</style>
+            {isDownloading && (
+                <div style={{ position: 'fixed', left: '-9999px', top: '-9999px' }}>
+                    <ExportCardRenderer
+                        ref={exportRef}
+                        data={data}
+                        layoutSrc={layoutSrc}
+                    />
+                </div>
+            )}
         </div>
     );
 };
