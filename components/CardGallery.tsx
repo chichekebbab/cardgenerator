@@ -94,6 +94,17 @@ const CardGallery: React.FC<CardGalleryProps> = ({
     return result;
   }, [cards, searchQuery, filterBase, filterValidated]);
 
+  // Define item slot order for subcategories
+  const ITEM_SLOT_ORDER = [
+    'Couvre-chef',
+    'Armure',
+    'Chaussures',
+    '1 Main',
+    '2 Mains',
+    'Monture',
+    '' // Empty string for one-shot items
+  ];
+
   // Group cards by type
   const cardsByType = useMemo(() => {
     const grouped = new Map<CardType, CardData[]>();
@@ -110,6 +121,38 @@ const CardGallery: React.FC<CardGalleryProps> = ({
 
     return grouped;
   }, [filteredCards]);
+
+  // Group ITEM cards by itemSlot
+  const itemsBySlot = useMemo(() => {
+    const items = cardsByType.get(CardType.ITEM) || [];
+    const grouped = new Map<string, CardData[]>();
+
+    // Initialize all slots with empty arrays
+    ITEM_SLOT_ORDER.forEach(slot => grouped.set(slot, []));
+
+    // Group items by slot
+    items.forEach(item => {
+      const slot = item.itemSlot || ''; // Empty for one-shot items
+      // Check if slot is in standard slots, otherwise put in "Monture"
+      if (ITEM_SLOT_ORDER.includes(slot)) {
+        const slotItems = grouped.get(slot) || [];
+        slotItems.push(item);
+        grouped.set(slot, slotItems);
+      } else if (slot !== '') {
+        // Non-empty slot not in standard list goes to "Monture"
+        const montureItems = grouped.get('Monture') || [];
+        montureItems.push(item);
+        grouped.set('Monture', montureItems);
+      } else {
+        // Empty slot (one-shot)
+        const oneshotItems = grouped.get('') || [];
+        oneshotItems.push(item);
+        grouped.set('', oneshotItems);
+      }
+    });
+
+    return grouped;
+  }, [cardsByType]);
 
   // Toggle section collapse
   const toggleSection = (type: CardType) => {
@@ -266,6 +309,82 @@ const CardGallery: React.FC<CardGalleryProps> = ({
               const style = getSectionStyle(type);
               const isCollapsed = collapsedSections.has(type);
 
+              // Special handling for ITEM type with subcategories
+              if (type === CardType.ITEM) {
+                return (
+                  <section
+                    key={type}
+                    className={`rounded-xl overflow-hidden border-2 ${style.border} ${style.bg}`}
+                  >
+                    {/* Section Header */}
+                    <button
+                      onClick={() => toggleSection(type)}
+                      className={`w-full flex items-center justify-between px-4 py-3 ${style.header} text-white font-bold text-lg transition-colors hover:brightness-110`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">{style.icon}</span>
+                        <span>{type}</span>
+                        <span className="text-white/80 font-normal text-sm">
+                          ({typeCards.length} carte{typeCards.length !== 1 ? 's' : ''})
+                        </span>
+                      </div>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className={`h-6 w-6 transition-transform duration-200 ${isCollapsed ? '' : 'rotate-180'}`}
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+
+                    {/* Section Content with Subcategories */}
+                    <div
+                      className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${isCollapsed ? 'grid-rows-[0fr]' : 'grid-rows-[1fr]'
+                        }`}
+                    >
+                      <div className="overflow-hidden">
+                        <div className="p-4 space-y-4">
+                          {ITEM_SLOT_ORDER.map(slot => {
+                            const slotCards = itemsBySlot.get(slot) || [];
+                            if (slotCards.length === 0) return null;
+
+                            const slotLabel = slot === '' ? 'Usage unique' : slot;
+
+                            return (
+                              <div key={slot} className="space-y-2">
+                                {/* Subcategory Header */}
+                                <div className="flex items-center gap-2 px-2 py-1.5 bg-amber-100 border-l-4 border-amber-600 rounded">
+                                  <h4 className="font-semibold text-amber-900 text-sm">
+                                    {slotLabel}
+                                  </h4>
+                                  <span className="text-xs text-amber-700">
+                                    ({slotCards.length} carte{slotCards.length !== 1 ? 's' : ''})
+                                  </span>
+                                </div>
+                                {/* Cards Grid */}
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                                  {slotCards.map(card => (
+                                    <CardThumbnail
+                                      key={card.id}
+                                      card={card}
+                                      onClick={() => onSelectCard(card)}
+                                      isSelected={card.id === selectedCardId}
+                                    />
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                );
+              }
+
+              // Default rendering for other types
               return (
                 <section
                   key={type}
