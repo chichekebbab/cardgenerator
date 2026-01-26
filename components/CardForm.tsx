@@ -1,24 +1,27 @@
 import React, { useState } from 'react';
 import { CardData, CardType, CardLayout } from '../types';
 import { generateCardArt } from '../services/geminiService';
+import { removeBackground, removeBackgroundFromUrl } from '../services/removeBgService';
 
 interface CardFormProps {
   cardData: CardData;
   onChange: (data: CardData) => void;
-  onSave: () => void;
+  onSave: (cardToSave?: CardData) => void;
   onNew: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
   isSaving: boolean;
   hasScriptUrl: boolean;
   onImport: () => void;
+  removeBgApiKey?: string; // New: remove.bg API key
 }
 
 // Pré-prompt technique imposé (ne change jamais)
 const FIXED_PRE_PROMPT = "Génère une illustration au format carré (1x1). Le style artistique doit imiter parfaitement celui du jeu de cartes 'Munchkin' et du dessinateur John Kovalic : un style cartoon satirique, dessiné à la main, avec des contours noirs épais et une ambiance humoristique de fantasy. L'image doit présenter un seul élément isolé, centré. Il ne doit y avoir absolument aucun texte sur l'image. Le fond doit être une couleur unie, neutre et simple, sans aucun décor ni détail. Voici l'élément à générer :";
 
-const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, onDuplicate, onDelete, isSaving, hasScriptUrl, onImport }) => {
+const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, onDuplicate, onDelete, isSaving, hasScriptUrl, onImport, removeBgApiKey }) => {
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isRemovingBg, setIsRemovingBg] = useState(false); // New: background removal state
   const [error, setError] = useState<string | null>(null);
 
   const handleChange = (field: keyof CardData, value: string | number | boolean | CardLayout) => {
@@ -50,6 +53,70 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
       console.error(err);
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleRemoveBackground = async () => {
+    if (!removeBgApiKey) {
+      setError("Clé API remove.bg non configurée. Ajoutez-la dans les paramètres (⚙️).");
+      return;
+    }
+
+    // Check if there's an image to process
+    if (!cardData.imageData && !cardData.storedImageUrl) {
+      setError("Aucune image à traiter. Générez d'abord une image.");
+      return;
+    }
+
+    setIsRemovingBg(true);
+    setError(null);
+
+    try {
+      console.log("[BG REMOVAL] Starting background removal...");
+      console.log("[BG REMOVAL] Current state:", { hasImageData: !!cardData.imageData, hasStoredUrl: !!cardData.storedImageUrl });
+
+      let processedImage: string;
+
+      // Use URL-based API when storedImageUrl exists (avoids CORS issues with Google Drive)
+      if (cardData.storedImageUrl && !cardData.imageData) {
+        console.log("[BG REMOVAL] Using URL-based API with:", cardData.storedImageUrl);
+        processedImage = await removeBackgroundFromUrl(cardData.storedImageUrl, removeBgApiKey);
+      } else if (cardData.imageData) {
+        console.log("[BG REMOVAL] Using base64 API");
+        // Use base64-based API for locally generated images
+        processedImage = await removeBackground(cardData.imageData, removeBgApiKey);
+      } else {
+        throw new Error("Impossible de charger l'image.");
+      }
+
+      console.log("[BG REMOVAL] Background removed successfully, updating state...");
+      console.log("[BG REMOVAL] Processed image length:", processedImage.length);
+
+      // Create a new card object with the processed image
+      const updatedCard = {
+        ...cardData,
+        imageData: processedImage,
+        storedImageUrl: undefined // Clear stored URL to indicate unsaved changes
+      };
+
+      console.log("[BG REMOVAL] Updated card:", { hasImageData: !!updatedCard.imageData, hasStoredUrl: !!updatedCard.storedImageUrl });
+
+      // Update the card data with the new image FIRST
+      onChange(updatedCard);
+
+      // Don't wait for React state updates - pass the updated card directly to save
+      console.log("[BG REMOVAL] Calling save with updated card data...");
+
+      // Pass the updated card directly to avoid async state update issues
+      await onSave(updatedCard);
+
+      console.log("[BG REMOVAL] Save completed successfully");
+      alert("Arrière-plan supprimé et carte sauvegardée avec succès !");
+    } catch (err: any) {
+      console.error("[BG REMOVAL] Error:", err);
+      setError(err.message || "Erreur lors de la suppression de l'arrière-plan.");
+    } finally {
+      setIsRemovingBg(false);
     }
   };
 
@@ -298,6 +365,35 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
           <p className="text-[10px] text-gray-500 mt-2 italic">
             * Le style artistique "Munchkin/John Kovalic" est appliqué automatiquement.
           </p>
+
+          {/* Background Removal Button - Show if image exists */}
+          {(cardData.imageData || cardData.storedImageUrl) && (
+            <div className="mt-3 pt-3 border-t border-gray-200">
+              <button
+                onClick={handleRemoveBackground}
+                disabled={isRemovingBg || !removeBgApiKey}
+                className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded transition-colors disabled:opacity-50 shadow-sm flex items-center justify-center gap-2"
+                title={!removeBgApiKey ? "Configurez d'abord votre clé API dans les paramètres" : "Supprimer l'arrière-plan de l'image"}
+              >
+                {isRemovingBg ? (
+                  <>
+                    <span className="animate-spin">⏳</span>
+                    Suppression en cours...
+                  </>
+                ) : (
+                  <>
+                    <span>✂️</span>
+                    Supprimer l'arrière-plan
+                  </>
+                )}
+              </button>
+              {!removeBgApiKey && (
+                <p className="text-xs text-gray-500 mt-1 text-center">
+                  Configurez votre clé API remove.bg dans les paramètres (⚙️) pour utiliser cette fonction.
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Image Style Options */}

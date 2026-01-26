@@ -165,6 +165,7 @@ const App: React.FC = () => {
   const [cardData, setCardData] = useState<CardData>(initCard);
   const [savedCards, setSavedCards] = useState<CardData[]>([]);
   const [scriptUrl, setScriptUrl] = useState<string>("");
+  const [removeBgApiKey, setRemoveBgApiKey] = useState<string>(""); // New: remove.bg API key
   const [showSettings, setShowSettings] = useState(false);
   const [activeTab, setActiveTab] = useState<'config' | 'code'>('config'); // Nouvel état pour les onglets modal settings
   const [activeView, setActiveView] = useState<'editor' | 'gallery' | 'list'>('editor'); // Nouvel état pour la navigation principale
@@ -174,12 +175,17 @@ const App: React.FC = () => {
   const [showImportModal, setShowImportModal] = useState(false);
   const [listSaveStatus, setListSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
-  // Charger l'URL du script depuis le localStorage
+  // Charger l'URL du script et la clé API depuis le localStorage
   useEffect(() => {
     const savedUrl = localStorage.getItem("google_script_url");
     if (savedUrl) {
       setScriptUrl(savedUrl);
       loadSavedCards(savedUrl);
+    }
+
+    const savedApiKey = localStorage.getItem("removebg_api_key");
+    if (savedApiKey) {
+      setRemoveBgApiKey(savedApiKey);
     }
   }, []);
 
@@ -203,33 +209,70 @@ const App: React.FC = () => {
 
   const handleScriptUrlSave = () => {
     localStorage.setItem("google_script_url", scriptUrl);
+    localStorage.setItem("removebg_api_key", removeBgApiKey);
     setShowSettings(false);
     loadSavedCards(scriptUrl);
   };
 
-  const handleSaveCard = async () => {
+  const handleSaveCard = async (cardToSave?: CardData | any) => {
+    // Detect if we received a valid CardData object or an event/undefined
+    // Events have properties like 'target', 'preventDefault', etc.
+    // CardData has 'id', 'title', 'type', etc.
+    const isValidCardData = cardToSave && typeof cardToSave === 'object' && 'id' in cardToSave && 'title' in cardToSave;
+    const dataToSave = isValidCardData ? cardToSave : cardData;
+    const calledFromBackgroundRemoval = isValidCardData;
+
+    console.log("[SAVE] Starting save process...");
+    console.log("[SAVE] Card to save:", { id: dataToSave.id, title: dataToSave.title, hasImageData: !!dataToSave.imageData, hasStoredUrl: !!dataToSave.storedImageUrl });
+    console.log("[SAVE] Called from background removal:", calledFromBackgroundRemoval);
+
     setIsSaving(true);
     try {
-      const result = await saveCardToSheet(scriptUrl, cardData);
+      const result = await saveCardToSheet(scriptUrl, dataToSave);
+      console.log("[SAVE] Save result:", result);
 
       // Si le serveur a renvoyé une URL d'image valide (qui ressemble à une URL)
       // On met à jour l'état local pour utiliser l'URL stockée
       if (result.imageUrl && (result.imageUrl.startsWith('http') || result.imageUrl.startsWith('data:'))) {
-        setCardData(prev => ({ ...prev, storedImageUrl: result.imageUrl, imageData: null }));
+        console.log("[SAVE] Valid image URL received:", result.imageUrl.substring(0, 100) + "...");
+
+        // Keep imageData if it exists (important for freshly modified images)
+        // Only clear it if we're confident the URL points to the correct image
+        if (dataToSave.imageData) {
+          console.log("[SAVE] Keeping imageData, setting storedImageUrl");
+          // For freshly generated/modified images, keep imageData and set storedImageUrl
+          // The image will display from imageData until the user reloads the card
+          setCardData(prev => ({ ...prev, ...dataToSave, storedImageUrl: result.imageUrl }));
+        } else {
+          console.log("[SAVE] No imageData, using storedImageUrl only");
+          // For cards without local imageData, use the stored URL
+          setCardData(prev => ({ ...prev, storedImageUrl: result.imageUrl, imageData: null }));
+        }
       } else {
         // Si l'URL renvoyée est vide ou invalide (ex: juste un nom de fichier), 
         // on GARDE l'image locale (imageData) pour ne pas casser l'affichage.
         if (result.imageUrl) {
-          console.warn("URL invalide reçue du script (nom de fichier ?). Conservation de l'image locale.", result.imageUrl);
+          console.warn("[SAVE] URL invalide reçue du script (nom de fichier ?). Conservation de l'image locale.", result.imageUrl);
         }
       }
 
-      // Rafraichir la liste
-      await loadSavedCards(scriptUrl);
-      alert("Carte sauvegardée avec succès !");
+      // Only show alert if NOT called from background removal (to avoid double alerts)
+      if (!calledFromBackgroundRemoval) {
+        alert("Carte sauvegardée avec succès !");
+      }
+
+      console.log("[SAVE] Scheduling cards list refresh in 2 seconds...");
+      // Delay the list refresh by 2 seconds to give Google Sheets time to fully update
+      // This prevents loading stale data that would overwrite our current card
+      setTimeout(() => {
+        console.log("[SAVE] Refreshing cards list...");
+        loadSavedCards(scriptUrl);
+      }, 2000);
     } catch (e: any) {
+      console.error("[SAVE] Save error:", e);
       alert("Erreur lors de la sauvegarde : " + e.message);
     } finally {
+      console.log("[SAVE] Save process completed");
       setIsSaving(false);
     }
   };
@@ -460,6 +503,20 @@ const App: React.FC = () => {
                     </div>
                   </div>
 
+                  <div>
+                    <label className="block text-sm mb-2 text-amber-100 font-bold">Clé API remove.bg (suppression d'arrière-plan)</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={removeBgApiKey}
+                        onChange={(e) => setRemoveBgApiKey(e.target.value)}
+                        placeholder="Votre clé API remove.bg"
+                        className="flex-grow p-3 rounded bg-stone-900 border border-stone-600 text-amber-100 text-sm font-mono focus:border-amber-500 outline-none"
+                      />
+                    </div>
+                    <p className="text-xs text-amber-100/60 mt-1">Obtenez votre clé API sur <a href="https://www.remove.bg/api" target="_blank" className="underline hover:text-amber-200">remove.bg/api</a></p>
+                  </div>
+
                   {configError && (
                     <div className="bg-red-900/40 border border-red-500/50 rounded p-4 text-sm text-red-100 space-y-2">
                       <p className="font-bold flex items-center gap-2">⚠️ {configError}</p>
@@ -591,6 +648,7 @@ const App: React.FC = () => {
                   onImport={() => setShowImportModal(true)}
                   isSaving={isSaving}
                   hasScriptUrl={!!scriptUrl}
+                  removeBgApiKey={removeBgApiKey}
                 />
               </div>
             </div>
