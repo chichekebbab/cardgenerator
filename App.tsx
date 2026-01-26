@@ -153,6 +153,7 @@ const App: React.FC = () => {
   const [isLoadingList, setIsLoadingList] = useState(false);
   const [configError, setConfigError] = useState<string | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [listSaveStatus, setListSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
   // Charger l'URL du script depuis le localStorage
   useEffect(() => {
@@ -249,6 +250,41 @@ const App: React.FC = () => {
     setActiveView('editor'); // Switch to editor when selecting a card
     // Scroll to top on mobile
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Quick update for inline editing in list view (silent save)
+  const handleQuickUpdateCard = async (updatedCard: CardData) => {
+    if (!scriptUrl) return;
+
+    setListSaveStatus('saving');
+
+    try {
+      // Update local state immediately for responsiveness
+      setSavedCards(prev => prev.map(c => c.id === updatedCard.id ? updatedCard : c));
+
+      // Also update cardData if it's the same card being edited
+      if (cardData.id === updatedCard.id) {
+        setCardData(updatedCard);
+      }
+
+      // Save to backend
+      await saveCardToSheet(scriptUrl, updatedCard);
+
+      setListSaveStatus('saved');
+
+      // Reset to idle after 2 seconds
+      setTimeout(() => {
+        setListSaveStatus('idle');
+      }, 2000);
+    } catch (e: any) {
+      console.error('Erreur lors de la sauvegarde rapide:', e);
+      setListSaveStatus('error');
+
+      // Reset to idle after 3 seconds
+      setTimeout(() => {
+        setListSaveStatus('idle');
+      }, 3000);
+    }
   };
 
   const copyToClipboard = (text: string) => {
@@ -514,6 +550,8 @@ const App: React.FC = () => {
           <CardList
             cards={savedCards}
             onSelectCard={handleSelectCard}
+            onUpdateCard={handleQuickUpdateCard}
+            saveStatus={listSaveStatus}
             isLoading={isLoadingList}
           />
         )}

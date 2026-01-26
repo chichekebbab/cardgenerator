@@ -1,10 +1,19 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { CardData, CardType } from '../types';
+
+type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
 interface CardListProps {
     cards: CardData[];
     onSelectCard: (card: CardData) => void;
+    onUpdateCard?: (card: CardData) => Promise<void>;
+    saveStatus?: SaveStatus;
     isLoading: boolean;
+}
+
+interface EditingCell {
+    cardId: string;
+    key: keyof CardData;
 }
 
 type SortDirection = 'asc' | 'desc' | null;
@@ -36,9 +45,22 @@ const COLUMNS: { key: keyof CardData; label: string; type: 'string' | 'number' |
     { key: 'internalComment', label: 'Commentaire', type: 'string', width: '150px' },
 ];
 
-const CardList: React.FC<CardListProps> = ({ cards, onSelectCard, isLoading }) => {
+const CardList: React.FC<CardListProps> = ({ cards, onSelectCard, onUpdateCard, saveStatus = 'idle', isLoading }) => {
     const [sortConfig, setSortConfig] = useState<SortConfig>({ key: null, direction: null });
     const [filters, setFilters] = useState<ColumnFilter>({});
+    const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
+    const [editValue, setEditValue] = useState<string>('');
+    const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(null);
+
+    // Focus input when editing starts
+    useEffect(() => {
+        if (editingCell && inputRef.current) {
+            inputRef.current.focus();
+            if ('select' in inputRef.current) {
+                inputRef.current.select();
+            }
+        }
+    }, [editingCell]);
 
     // Handle sort
     const handleSort = (key: keyof CardData) => {
@@ -169,8 +191,149 @@ const CardList: React.FC<CardListProps> = ({ cards, onSelectCard, isLoading }) =
         return <span className="text-amber-600 ml-1">↓</span>;
     };
 
-    // Render cell value
+    // Start editing a cell
+    const startEditing = (card: CardData, column: typeof COLUMNS[0]) => {
+        const value = card[column.key];
+        setEditingCell({ cardId: card.id, key: column.key });
+        setEditValue(value === null || value === undefined ? '' : String(value));
+    };
+
+    // Cancel editing
+    const cancelEditing = () => {
+        setEditingCell(null);
+        setEditValue('');
+    };
+
+    // Commit the edit and save
+    const commitEdit = async (card: CardData, column: typeof COLUMNS[0]) => {
+        if (!editingCell || !onUpdateCard) {
+            cancelEditing();
+            return;
+        }
+
+        let newValue: any = editValue;
+
+        // Convert value based on column type
+        if (column.type === 'number') {
+            newValue = editValue === '' ? '' : Number(editValue);
+        } else if (column.type === 'boolean') {
+            newValue = editValue === 'true';
+        }
+
+        // Only save if value changed
+        const oldValue = card[column.key];
+        if (String(oldValue) !== String(newValue)) {
+            const updatedCard = { ...card, [column.key]: newValue };
+            try {
+                await onUpdateCard(updatedCard);
+            } catch (e) {
+                console.error('Failed to save:', e);
+            }
+        }
+
+        cancelEditing();
+    };
+
+    // Handle cell click
+    const handleCellClick = (e: React.MouseEvent, card: CardData, column: typeof COLUMNS[0]) => {
+        e.stopPropagation();
+
+        // Title column opens the full editor
+        if (column.key === 'title') {
+            onSelectCard(card);
+            return;
+        }
+
+        // Other columns start inline editing if onUpdateCard is provided
+        if (onUpdateCard) {
+            startEditing(card, column);
+        }
+    };
+
+    // Handle key events in edit mode
+    const handleEditKeyDown = (e: React.KeyboardEvent, card: CardData, column: typeof COLUMNS[0]) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            commitEdit(card, column);
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            cancelEditing();
+        }
+    };
+
+    // Render editable input for a cell
+    const renderEditInput = (card: CardData, column: typeof COLUMNS[0]) => {
+        if (column.type === 'boolean') {
+            return (
+                <select
+                    ref={inputRef as React.RefObject<HTMLSelectElement>}
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    onBlur={() => commitEdit(card, column)}
+                    onKeyDown={(e) => handleEditKeyDown(e, card, column)}
+                    className="w-full px-1 py-0.5 text-sm border-2 border-amber-500 rounded bg-white focus:outline-none"
+                >
+                    <option value="false">Non</option>
+                    <option value="true">Oui</option>
+                </select>
+            );
+        }
+
+        if (column.key === 'type') {
+            return (
+                <select
+                    ref={inputRef as React.RefObject<HTMLSelectElement>}
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    onBlur={() => commitEdit(card, column)}
+                    onKeyDown={(e) => handleEditKeyDown(e, card, column)}
+                    className="w-full px-1 py-0.5 text-sm border-2 border-amber-500 rounded bg-white focus:outline-none"
+                >
+                    {Object.values(CardType).map(type => (
+                        <option key={type} value={type}>{type}</option>
+                    ))}
+                </select>
+            );
+        }
+
+        // For longer text fields, use textarea
+        if (['description', 'badStuff', 'internalComment'].includes(column.key)) {
+            return (
+                <textarea
+                    ref={inputRef as React.RefObject<HTMLTextAreaElement>}
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    onBlur={() => commitEdit(card, column)}
+                    onKeyDown={(e) => handleEditKeyDown(e, card, column)}
+                    rows={2}
+                    className="w-full px-1 py-0.5 text-sm border-2 border-amber-500 rounded bg-white focus:outline-none resize-none"
+                />
+            );
+        }
+
+        // Default: text input
+        return (
+            <input
+                ref={inputRef as React.RefObject<HTMLInputElement>}
+                type={column.type === 'number' ? 'number' : 'text'}
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onBlur={() => commitEdit(card, column)}
+                onKeyDown={(e) => handleEditKeyDown(e, card, column)}
+                className="w-full px-1 py-0.5 text-sm border-2 border-amber-500 rounded bg-white focus:outline-none"
+            />
+        );
+    };
+
+    // Render cell value (display mode or edit mode)
     const renderCellValue = (card: CardData, column: typeof COLUMNS[0]) => {
+        // Check if this cell is being edited
+        const isEditing = editingCell?.cardId === card.id && editingCell?.key === column.key;
+
+        if (isEditing) {
+            return renderEditInput(card, column);
+        }
+
         const value = card[column.key];
 
         if (column.type === 'boolean') {
@@ -188,6 +351,15 @@ const CardList: React.FC<CardListProps> = ({ cards, onSelectCard, isLoading }) =
         if (column.key === 'type') {
             return (
                 <span className="inline-block px-2 py-0.5 bg-amber-100 text-amber-800 rounded text-xs font-medium truncate max-w-full">
+                    {String(value)}
+                </span>
+            );
+        }
+
+        // Title column shows as a link-like element
+        if (column.key === 'title') {
+            return (
+                <span className="truncate block text-amber-700 hover:text-amber-900 font-medium cursor-pointer" title={String(value)}>
                     {String(value)}
                 </span>
             );
@@ -261,6 +433,41 @@ const CardList: React.FC<CardListProps> = ({ cards, onSelectCard, isLoading }) =
                         <span className="text-sm text-gray-500">
                             ({processedCards.length} / {cards.length} carte{cards.length !== 1 ? 's' : ''})
                         </span>
+                        {/* Save status indicator */}
+                        {onUpdateCard && (
+                            <div className="flex items-center gap-1.5 ml-2" title={
+                                saveStatus === 'saving' ? 'Sauvegarde en cours...' :
+                                    saveStatus === 'saved' ? 'Sauvegardé' :
+                                        saveStatus === 'error' ? 'Erreur de sauvegarde' :
+                                            'Synchronisé'
+                            }>
+                                {saveStatus === 'saving' ? (
+                                    <div className="animate-spin h-4 w-4 border-2 border-amber-600 border-t-transparent rounded-full"></div>
+                                ) : saveStatus === 'saved' ? (
+                                    <svg className="h-4 w-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                ) : saveStatus === 'error' ? (
+                                    <svg className="h-4 w-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    </svg>
+                                ) : (
+                                    <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                    </svg>
+                                )}
+                                <span className={`text-xs ${saveStatus === 'saving' ? 'text-amber-600' :
+                                    saveStatus === 'saved' ? 'text-green-600' :
+                                        saveStatus === 'error' ? 'text-red-500' :
+                                            'text-gray-400'
+                                    }`}>
+                                    {saveStatus === 'saving' ? 'Sauvegarde...' :
+                                        saveStatus === 'saved' ? 'Sauvegardé' :
+                                            saveStatus === 'error' ? 'Erreur' :
+                                                ''}
+                                </span>
+                            </div>
+                        )}
                     </div>
 
                     {hasActiveFilters && (
@@ -349,21 +556,25 @@ const CardList: React.FC<CardListProps> = ({ cards, onSelectCard, isLoading }) =
                                 </thead>
                                 {/* Body */}
                                 <tbody>
-                                    {console.log('RENDER: processedCards[0]:', processedCards[0]?.title, processedCards[0]?.type)}
                                     {processedCards.map((card, index) => (
                                         <tr
                                             key={card.id}
-                                            onClick={() => onSelectCard(card)}
                                             className={`
-                        cursor-pointer transition-colors border-b border-gray-100
-                        ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
-                        hover:bg-amber-50
-                      `}
+                                                transition-colors border-b border-gray-100
+                                                ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
+                                                hover:bg-amber-50
+                                            `}
                                         >
                                             {COLUMNS.map(column => (
                                                 <td
                                                     key={`${card.id}-${column.key}`}
-                                                    className="px-3 py-2.5 max-w-[200px]"
+                                                    onClick={(e) => handleCellClick(e, card, column)}
+                                                    className={`px-3 py-2.5 max-w-[200px] ${column.key === 'title'
+                                                            ? 'cursor-pointer'
+                                                            : onUpdateCard
+                                                                ? 'cursor-text hover:bg-amber-100/50'
+                                                                : ''
+                                                        }`}
                                                 >
                                                     {renderCellValue(card, column)}
                                                 </td>
