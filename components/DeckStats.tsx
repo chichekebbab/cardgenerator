@@ -83,7 +83,7 @@ const DeckStats: React.FC<DeckStatsProps> = ({ cards }) => {
 
   // "Autres" : Items avec slot mais pas l'un des standards (ex: Accessoire) OU slot explicitement "Autre"
   // Pour simplifier ici, on compte ce qui a un slot mais n'est pas dans les catégories ci-dessus
-  const standardSlots = ['Couvre-chef', 'Armure', 'Chaussures', '1 Main', '2 Mains'];
+  const standardSlots = ['Couvre-chef', 'Armure', 'Chaussures', '1 Main', '2 Mains', 'NoSlot'];
   const otherEquip = items.filter(c => c.itemSlot && !standardSlots.includes(c.itemSlot)).length;
 
   // One shot / GUAL : Pas de slot défini

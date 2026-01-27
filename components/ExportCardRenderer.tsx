@@ -181,7 +181,7 @@ const ExportCardRenderer = forwardRef<HTMLDivElement, ExportCardRendererProps>((
                                     Gros
                                 </span>
                             )}
-                            {data.itemSlot ? (
+                            {data.itemSlot && data.itemSlot !== 'NoSlot' ? (
                                 <span className="font-medieval font-bold text-[#682A22] whitespace-nowrap block"
                                     style={{ fontSize: '1.8rem' }}>
                                     {data.itemSlot}

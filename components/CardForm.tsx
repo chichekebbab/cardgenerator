@@ -277,13 +277,14 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
                   onChange={(e) => handleChange('itemSlot', e.target.value)}
                   className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-amber-500"
                 >
-                  <option value="">(Aucun)</option>
+                  <option value="">Usage Unique</option>
                   <option value="1 Main">1 Main</option>
                   <option value="2 Mains">2 Mains</option>
                   <option value="Couvre-chef">Couvre-chef</option>
                   <option value="Chaussures">Chaussures</option>
                   <option value="Armure">Armure</option>
                   <option value="Monture">Monture</option>
+                  <option value="NoSlot">Sans emplacement</option>
                 </select>
               </div>
               <div className="flex items-end pb-2">

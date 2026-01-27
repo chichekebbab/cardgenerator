@@ -443,7 +443,7 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data }) => {
                                         Gros
                                     </span>
                                 )}
-                                {data.itemSlot ? (
+                                {data.itemSlot && data.itemSlot !== 'NoSlot' ? (
                                     <span className="font-medieval font-bold text-[#682A22] whitespace-nowrap block"
                                         style={{ fontSize: '0.9rem' }}>
                                         {data.itemSlot}

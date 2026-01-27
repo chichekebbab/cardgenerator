@@ -65,6 +65,7 @@ const CardGallery: React.FC<CardGalleryProps> = ({
   const [collapsedSections, setCollapsedSections] = useState<Set<CardType>>(new Set());
   const [filterBase, setFilterBase] = useState<'all' | 'oui' | 'non'>('all');
   const [filterValidated, setFilterValidated] = useState<'all' | 'oui' | 'non'>('all');
+  const [filterImage, setFilterImage] = useState<'all' | 'avec' | 'sans'>('all');
   const [isExportingAll, setIsExportingAll] = useState(false);
   const [exportProgress, setExportProgress] = useState({ current: 0, total: 0 });
 
@@ -97,8 +98,15 @@ const CardGallery: React.FC<CardGalleryProps> = ({
       result = result.filter(card => !card.isValidated);
     }
 
+    // Filter by Image
+    if (filterImage === 'avec') {
+      result = result.filter(card => card.imageData || card.storedImageUrl);
+    } else if (filterImage === 'sans') {
+      result = result.filter(card => !card.imageData && !card.storedImageUrl);
+    }
+
     return result;
-  }, [cards, searchQuery, filterBase, filterValidated]);
+  }, [cards, searchQuery, filterBase, filterValidated, filterImage]);
 
   // Define item slot order for subcategories
   const ITEM_SLOT_ORDER = [
@@ -108,6 +116,7 @@ const CardGallery: React.FC<CardGalleryProps> = ({
     '1 Main',
     '2 Mains',
     'Monture',
+    'NoSlot',
     '' // Empty string for one-shot items
   ];
 
@@ -226,6 +235,15 @@ const CardGallery: React.FC<CardGalleryProps> = ({
               <option value="all">Toutes (Valid ?)</option>
               <option value="oui">Validée: Oui</option>
               <option value="non">Validée: Non</option>
+            </select>
+            <select
+              value={filterImage}
+              onChange={(e) => setFilterImage(e.target.value as 'all' | 'avec' | 'sans')}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-amber-500 focus:border-amber-500"
+            >
+              <option value="all">Toutes (Image ?)</option>
+              <option value="avec">Image: Oui</option>
+              <option value="sans">Image: Non</option>
             </select>
           </div>
 
@@ -375,7 +393,7 @@ const CardGallery: React.FC<CardGalleryProps> = ({
                             const slotCards = itemsBySlot.get(slot) || [];
                             if (slotCards.length === 0) return null;
 
-                            const slotLabel = slot === '' ? 'Usage unique' : slot;
+                            const slotLabel = slot === '' ? 'Usage unique' : slot === 'NoSlot' ? 'Sans emplacement' : slot;
 
                             return (
                               <div key={slot} className="space-y-2">
