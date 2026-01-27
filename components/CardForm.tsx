@@ -122,46 +122,59 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200 h-full overflow-y-auto">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">Éditeur</h2>
-        <div className="flex gap-2">
+      <div className="flex items-center justify-between gap-2 mb-6 overflow-x-auto pb-1">
+        <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={onNew}
-            className="px-3 py-1 text-sm text-gray-600 bg-gray-100 hover:bg-gray-200 rounded border border-gray-300 transition-colors"
+            className="h-[34px] px-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded border border-gray-300 transition-colors flex items-center gap-1.5 whitespace-nowrap"
+            title="Nouvelle Carte"
           >
-            Nouvelle Carte
+            <span>➕</span> Nouvelle
           </button>
           <button
             onClick={onDuplicate}
-            className="px-3 py-1 text-sm text-gray-600 bg-gray-100 hover:bg-gray-200 rounded border border-gray-300 transition-colors"
+            className="h-[34px] px-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded border border-gray-300 transition-colors flex items-center gap-1.5 whitespace-nowrap"
+            title="Dupliquer la carte"
           >
-            Dupliquer
+            <span>👥</span> Dupliquer
           </button>
           <button
             onClick={onImport}
-            className="flex items-center gap-2 px-3 py-1 text-sm text-gray-600 bg-gray-100 hover:bg-gray-200 rounded border border-gray-300 transition-colors"
+            className="h-[34px] px-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded border border-gray-300 transition-colors flex items-center gap-1.5 whitespace-nowrap"
+            title="Importer via JSON"
           >
-            📥 Import via JSON
+            <span>📥</span> Import
           </button>
-          {hasScriptUrl && (
-            <div className="flex gap-2">
-              <button
-                onClick={onDelete}
-                disabled={isSaving}
-                className="px-3 py-1 text-sm text-red-600 bg-red-50 hover:bg-red-100 rounded border border-red-200 transition-colors disabled:opacity-50"
-              >
-                🗑️ Supprimer
-              </button>
-              <button
-                onClick={onSave}
-                disabled={isSaving}
-                className="flex items-center gap-2 px-4 py-1 text-sm font-bold text-white bg-green-600 hover:bg-green-700 rounded shadow transition-colors disabled:opacity-50"
-              >
-                {isSaving ? 'Sauvegarde...' : '💾 Sauvegarder'}
-              </button>
-            </div>
-          )}
         </div>
+
+        {hasScriptUrl && (
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={onDelete}
+              disabled={isSaving}
+              className="h-[34px] w-[34px] text-red-600 bg-red-50 hover:bg-red-100 rounded border border-red-200 transition-colors disabled:opacity-50 flex items-center justify-center shrink-0"
+              title="Supprimer la carte"
+            >
+              <span className="text-base leading-none">🗑️</span>
+            </button>
+            <button
+              onClick={onSave}
+              disabled={isSaving}
+              className="h-[34px] px-3 text-sm font-bold text-white bg-green-600 hover:bg-green-700 rounded shadow transition-colors disabled:opacity-50 flex items-center gap-1.5 whitespace-nowrap"
+            >
+              {isSaving ? (
+                <>
+                  <span className="animate-spin text-xs">⏳</span>
+                  ...
+                </>
+              ) : (
+                <>
+                  <span>💾</span> Sauvegarder
+                </>
+              )}
+            </button>
+          </div>
+        )}
       </div>
 
       {!hasScriptUrl && (
@@ -285,6 +298,7 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
                   <option value="Armure">Armure</option>
                   <option value="Monture">Monture</option>
                   <option value="NoSlot">Sans emplacement</option>
+                  <option value="Amélioration">Amélioration</option>
                 </select>
               </div>
               <div className="flex items-end pb-2">

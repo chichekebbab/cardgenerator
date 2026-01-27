@@ -635,8 +635,8 @@ const App: React.FC = () => {
           <div className="max-w-[1600px] mx-auto p-4 md:p-8 w-full">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
-              {/* Left: Stats & Saved Cards (2 cols) */}
-              <div className="lg:col-span-2 order-3 lg:order-1">
+              {/* Left: Stats & Saved Cards (3 cols) */}
+              <div className="lg:col-span-3 order-3 lg:order-1">
                 <div className="bg-amber-100 rounded-lg shadow border border-amber-200 overflow-hidden sticky top-32 max-h-[calc(100vh-160px)] flex flex-col">
 
                   {/* Deck Statistics Panel */}
@@ -688,8 +688,8 @@ const App: React.FC = () => {
                 </div>
               </div>
 
-              {/* Right: Editor (6 cols) */}
-              <div className="lg:col-span-6 order-2 lg:order-3">
+              {/* Right: Editor (5 cols) */}
+              <div className="lg:col-span-5 order-2 lg:order-3">
                 {/* Card Navigation - only show if there are saved cards */}
                 {savedCards.length > 0 && (
                   <div className="mb-4">

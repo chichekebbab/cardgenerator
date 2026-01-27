@@ -94,6 +94,7 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data }) => {
         if (data.type === CardType.RACE) return 'layout_race.png';
         if (data.type === CardType.CURSE) return 'layout_malediction.png';
         if (data.type === CardType.ITEM) {
+            if (data.itemSlot === 'Amélioration') return 'layout_malediction.png';
             if (data.itemSlot || data.isBig) return 'layout_equipement.png';
             return 'layout_item.png';
         }
@@ -443,7 +444,7 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data }) => {
                                         Gros
                                     </span>
                                 )}
-                                {data.itemSlot && data.itemSlot !== 'NoSlot' ? (
+                                {data.itemSlot && data.itemSlot !== 'NoSlot' && data.itemSlot !== 'Amélioration' ? (
                                     <span className="font-medieval font-bold text-[#682A22] whitespace-nowrap block"
                                         style={{ fontSize: '0.9rem' }}>
                                         {data.itemSlot}
@@ -456,8 +457,8 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data }) => {
                         )}
                     </div>
 
-                    {/* COIN DROIT (390;914) : Trésor / Or - Masqué pour FAITHFUL_SERVANT */}
-                    {data.type !== CardType.FAITHFUL_SERVANT && (
+                    {/* COIN DROIT (390;914) : Trésor / Or - Masqué pour FAITHFUL_SERVANT et Amélioration */}
+                    {data.type !== CardType.FAITHFUL_SERVANT && !(data.type === CardType.ITEM && data.itemSlot === 'Amélioration') && (
                         <div className="absolute z-30 flex flex-col items-start"
                             style={{ left: scaleX(390), top: scaleY(914) }}>
 

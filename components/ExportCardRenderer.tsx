@@ -181,7 +181,7 @@ const ExportCardRenderer = forwardRef<HTMLDivElement, ExportCardRendererProps>((
                                     Gros
                                 </span>
                             )}
-                            {data.itemSlot && data.itemSlot !== 'NoSlot' ? (
+                            {data.itemSlot && data.itemSlot !== 'NoSlot' && data.itemSlot !== 'Amélioration' ? (
                                 <span className="font-medieval font-bold text-[#682A22] whitespace-nowrap block"
                                     style={{ fontSize: '1.8rem' }}>
                                     {data.itemSlot}
@@ -192,7 +192,7 @@ const ExportCardRenderer = forwardRef<HTMLDivElement, ExportCardRendererProps>((
                 </div>
 
                 {/* FOOTER DROIT - 390;914 */}
-                {data.type !== CardType.FAITHFUL_SERVANT && (
+                {data.type !== CardType.FAITHFUL_SERVANT && !(data.type === CardType.ITEM && data.itemSlot === 'Amélioration') && (
                     <div className="absolute z-30"
                         style={{ left: '390px', top: '914px' }}>
                         <span className="font-medieval font-bold text-[#682A22] whitespace-nowrap block"

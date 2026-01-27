@@ -1,173 +1,370 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { CardData, CardType } from '../types';
 
 interface DeckStatsProps {
   cards: CardData[];
 }
 
-const TARGETS = {
-  // DONJON (Total ~80 basé sur la somme des sous-totaux fournis)
-  CLASSES: 12,
-  RACES: 9,
-  MONSTER_1_5: 15,
-  MONSTER_6_10: 12,
-  MONSTER_11_15: 7,
-  MONSTER_16_20: 4,
-  CURSES: 15,
-  MODIFIERS: 6,
+// Valeurs de base par défaut (total: 350 cartes)
+const BASE_TARGETS = {
+  // DONJON (Total: 242)
+  RACE: 33,
+  CLASS: 23,
+  DUNGEON_TRAP: 21,
+  FAITHFUL_SERVANT: 10,
+  DUNGEON_BONUS: 16,
+  LEVEL_UP: 14,
+  CURSE: 37,
+  MONSTER: 88,
 
-  // TRÉSOR (Total ~73)
-  HEAD: 5,
-  ARMOR: 5,
-  FEET: 5,
-  HANDS: 25,
-  TREASURE_OTHER: 5, // "Autres" équipements
-  ONESHOT_GUAL: 28, // 18 One-shot + 10 GUAL
+  // TRÉSOR (Total: 108)
+  TREASURE_TRAP: 6,
+  ITEM: 102,
 };
 
-// Fonction utilitaire pour la couleur
+const DEFAULT_TOTAL = 350;
+
+// Fonction utilitaire pour la couleur de progression
 const getStatusColor = (current: number, target: number) => {
   const percentage = target > 0 ? current / target : 0;
-  if (percentage >= 1.0) return 'text-green-600'; // Atteint ou dépassé
-  if (percentage >= 0.9) return 'text-green-500'; // Très proche
-  if (percentage >= 0.5) return 'text-orange-500'; // En cours
-  return 'text-red-500'; // Début
+  if (percentage >= 1.0) return 'text-green-600';
+  if (percentage >= 0.9) return 'text-green-500';
+  if (percentage >= 0.5) return 'text-orange-500';
+  return 'text-red-500';
 };
 
-const StatRow: React.FC<{ label: string; current: number; target: number; isHeader?: boolean }> = ({ label, current, target, isHeader = false }) => {
+const StatRow: React.FC<{
+  label: string;
+  current: number;
+  validated: number;
+  target: number;
+}> = ({ label, current, validated, target }) => {
   const colorClass = getStatusColor(current, target);
 
-  // Style différent pour les lignes standards vs les totaux
-  const containerClass = isHeader
-    ? `flex justify-between items-center p-2 rounded border-b-2 mb-2 bg-gray-50 border-gray-200`
-    : `flex justify-between items-center text-xs p-1 px-2 rounded border mb-1 bg-white border-gray-100`;
-
-  const textClass = isHeader ? "font-bold text-sm text-gray-800 uppercase" : "text-gray-600 font-medium truncate pr-2";
-  const numberClass = isHeader ? `font-bold font-mono text-sm ${colorClass}` : `font-bold font-mono ${colorClass}`;
-
   return (
-    <div className={containerClass}>
-      <span className={textClass}>{label}</span>
-      <span className={numberClass}>
-        {current} <span className="text-gray-400 font-normal text-[10px]">/ {target}</span>
-      </span>
+    <div className="flex justify-between items-center text-xs py-1 px-2">
+      <span className="text-gray-600 truncate max-w-[80px]" title={label}>{label}</span>
+      <div className="flex items-center gap-1.5 font-mono text-xs">
+        <span className={colorClass} title="Total">{current}</span>
+        <span className="text-gray-300">/</span>
+        <span className="text-green-600" title="Validées">✓{validated}</span>
+        <span className="text-gray-300">/</span>
+        <span className="text-gray-400">{target}</span>
+      </div>
     </div>
   );
 };
 
 const DeckStats: React.FC<DeckStatsProps> = ({ cards }) => {
+  // État pour le nombre total cible (modifiable par l'utilisateur)
+  const [targetTotal, setTargetTotal] = useState<number>(DEFAULT_TOTAL);
+  const [isEditingTarget, setIsEditingTarget] = useState(false);
+  const [tempTarget, setTempTarget] = useState<string>(String(DEFAULT_TOTAL));
+
+  // État pour les sections repliables
+  const [isDungeonExpanded, setIsDungeonExpanded] = useState(false);
+  const [isTreasureExpanded, setIsTreasureExpanded] = useState(false);
+
+  // Charger les préférences depuis localStorage
+  useEffect(() => {
+    const savedTarget = localStorage.getItem('deckstats_target_total');
+    if (savedTarget) {
+      const parsed = parseInt(savedTarget, 10);
+      if (!isNaN(parsed) && parsed > 0) {
+        setTargetTotal(parsed);
+        setTempTarget(String(parsed));
+      }
+    }
+
+    const savedDungeonExpanded = localStorage.getItem('deckstats_dungeon_expanded');
+    if (savedDungeonExpanded !== null) {
+      setIsDungeonExpanded(savedDungeonExpanded === 'true');
+    }
+
+    const savedTreasureExpanded = localStorage.getItem('deckstats_treasure_expanded');
+    if (savedTreasureExpanded !== null) {
+      setIsTreasureExpanded(savedTreasureExpanded === 'true');
+    }
+  }, []);
+
+  // Sauvegarder les préférences
+  const saveTargetTotal = (newTarget: number) => {
+    setTargetTotal(newTarget);
+    localStorage.setItem('deckstats_target_total', String(newTarget));
+  };
+
+  const toggleDungeonExpanded = () => {
+    const newValue = !isDungeonExpanded;
+    setIsDungeonExpanded(newValue);
+    localStorage.setItem('deckstats_dungeon_expanded', String(newValue));
+  };
+
+  const toggleTreasureExpanded = () => {
+    const newValue = !isTreasureExpanded;
+    setIsTreasureExpanded(newValue);
+    localStorage.setItem('deckstats_treasure_expanded', String(newValue));
+  };
+
+  // Calculer le ratio pour ajuster les cibles
+  const ratio = targetTotal / DEFAULT_TOTAL;
+
+  // Calculer les cibles ajustées (arrondi supérieur)
+  const adjustedTargets = {
+    RACE: Math.ceil(BASE_TARGETS.RACE * ratio),
+    CLASS: Math.ceil(BASE_TARGETS.CLASS * ratio),
+    DUNGEON_TRAP: Math.ceil(BASE_TARGETS.DUNGEON_TRAP * ratio),
+    FAITHFUL_SERVANT: Math.ceil(BASE_TARGETS.FAITHFUL_SERVANT * ratio),
+    DUNGEON_BONUS: Math.ceil(BASE_TARGETS.DUNGEON_BONUS * ratio),
+    LEVEL_UP: Math.ceil(BASE_TARGETS.LEVEL_UP * ratio),
+    CURSE: Math.ceil(BASE_TARGETS.CURSE * ratio),
+    MONSTER: Math.ceil(BASE_TARGETS.MONSTER * ratio),
+    TREASURE_TRAP: Math.ceil(BASE_TARGETS.TREASURE_TRAP * ratio),
+    ITEM: Math.ceil(BASE_TARGETS.ITEM * ratio),
+  };
+
   // --- CALCULS DONJON ---
-  const classes = cards.filter(c => c.type === CardType.CLASS).length;
-  const races = cards.filter(c => c.type === CardType.RACE).length;
-  const curses = cards.filter(c => c.type === CardType.CURSE).length;
-  const modifiers = cards.filter(c => c.type === CardType.OTHER || c.type === CardType.FAITHFUL_SERVANT).length;
+  const raceCards = cards.filter(c => c.type === CardType.RACE);
+  const classCards = cards.filter(c => c.type === CardType.CLASS);
+  const dungeonTrapCards = cards.filter(c => c.type === CardType.DUNGEON_TRAP);
+  const faithfulServantCards = cards.filter(c => c.type === CardType.FAITHFUL_SERVANT);
+  const dungeonBonusCards = cards.filter(c => c.type === CardType.DUNGEON_BONUS);
+  const levelUpCards = cards.filter(c => c.type === CardType.LEVEL_UP);
+  const curseCards = cards.filter(c => c.type === CardType.CURSE);
+  const monsterCards = cards.filter(c => c.type === CardType.MONSTER);
 
-  const monsters = cards.filter(c => c.type === CardType.MONSTER);
-  const m1_5 = monsters.filter(c => (c.level || 0) >= 1 && (c.level || 0) <= 5).length;
-  const m6_10 = monsters.filter(c => (c.level || 0) >= 6 && (c.level || 0) <= 10).length;
-  const m11_15 = monsters.filter(c => (c.level || 0) >= 11 && (c.level || 0) <= 15).length;
-  const m16_20 = monsters.filter(c => (c.level || 0) >= 16).length;
+  const raceCount = raceCards.length;
+  const raceValidated = raceCards.filter(c => c.isValidated).length;
 
-  // Total Donjon Actuel
-  const totalDungeonCurrent = classes + races + curses + modifiers + monsters.length;
-  // Total Donjon Cible (Somme des constantes)
-  const totalDungeonTarget = TARGETS.CLASSES + TARGETS.RACES + TARGETS.CURSES + TARGETS.MODIFIERS + TARGETS.MONSTER_1_5 + TARGETS.MONSTER_6_10 + TARGETS.MONSTER_11_15 + TARGETS.MONSTER_16_20;
+  const classCount = classCards.length;
+  const classValidated = classCards.filter(c => c.isValidated).length;
+
+  const dungeonTrapCount = dungeonTrapCards.length;
+  const dungeonTrapValidated = dungeonTrapCards.filter(c => c.isValidated).length;
+
+  const faithfulServantCount = faithfulServantCards.length;
+  const faithfulServantValidated = faithfulServantCards.filter(c => c.isValidated).length;
+
+  const dungeonBonusCount = dungeonBonusCards.length;
+  const dungeonBonusValidated = dungeonBonusCards.filter(c => c.isValidated).length;
+
+  const levelUpCount = levelUpCards.length;
+  const levelUpValidated = levelUpCards.filter(c => c.isValidated).length;
+
+  const curseCount = curseCards.length;
+  const curseValidated = curseCards.filter(c => c.isValidated).length;
+
+  const monsterCount = monsterCards.length;
+  const monsterValidated = monsterCards.filter(c => c.isValidated).length;
+
+  // Total Donjon
+  const totalDungeonCurrent = raceCount + classCount + dungeonTrapCount + faithfulServantCount +
+    dungeonBonusCount + levelUpCount + curseCount + monsterCount;
+  const totalDungeonValidated = raceValidated + classValidated + dungeonTrapValidated + faithfulServantValidated +
+    dungeonBonusValidated + levelUpValidated + curseValidated + monsterValidated;
+  const totalDungeonTarget = adjustedTargets.RACE + adjustedTargets.CLASS + adjustedTargets.DUNGEON_TRAP +
+    adjustedTargets.FAITHFUL_SERVANT + adjustedTargets.DUNGEON_BONUS +
+    adjustedTargets.LEVEL_UP + adjustedTargets.CURSE + adjustedTargets.MONSTER;
 
   // --- CALCULS TRÉSOR ---
-  const items = cards.filter(c => c.type === CardType.ITEM);
+  const treasureTrapCards = cards.filter(c => c.type === CardType.TREASURE_TRAP);
+  const itemCards = cards.filter(c => c.type === CardType.ITEM);
 
-  const head = items.filter(c => c.itemSlot === 'Couvre-chef').length;
-  const armor = items.filter(c => c.itemSlot === 'Armure').length;
-  const feet = items.filter(c => c.itemSlot === 'Chaussures').length;
-  const hands = items.filter(c => c.itemSlot === '1 Main' || c.itemSlot === '2 Mains').length;
+  const treasureTrapCount = treasureTrapCards.length;
+  const treasureTrapValidated = treasureTrapCards.filter(c => c.isValidated).length;
 
-  // "Autres" : Items avec slot mais pas l'un des standards (ex: Accessoire) OU slot explicitement "Autre"
-  // Pour simplifier ici, on compte ce qui a un slot mais n'est pas dans les catégories ci-dessus
-  const standardSlots = ['Couvre-chef', 'Armure', 'Chaussures', '1 Main', '2 Mains', 'NoSlot'];
-  const otherEquip = items.filter(c => c.itemSlot && !standardSlots.includes(c.itemSlot)).length;
+  const itemCount = itemCards.length;
+  const itemValidated = itemCards.filter(c => c.isValidated).length;
 
-  // One shot / GUAL : Pas de slot défini
-  const oneshot = items.filter(c => !c.itemSlot).length;
-
-  // Total Trésor Actuel
-  const totalTreasureCurrent = items.length;
-  // Total Trésor Cible
-  const totalTreasureTarget = TARGETS.HEAD + TARGETS.ARMOR + TARGETS.FEET + TARGETS.HANDS + TARGETS.TREASURE_OTHER + TARGETS.ONESHOT_GUAL;
+  // Total Trésor
+  const totalTreasureCurrent = treasureTrapCount + itemCount;
+  const totalTreasureValidated = treasureTrapValidated + itemValidated;
+  const totalTreasureTarget = adjustedTargets.TREASURE_TRAP + adjustedTargets.ITEM;
 
   // --- TOTAUX GLOBAUX ---
   const grandTotalCurrent = totalDungeonCurrent + totalTreasureCurrent;
-  const grandTotalTarget = totalDungeonTarget + totalTreasureTarget;
+  const grandTotalValidated = totalDungeonValidated + totalTreasureValidated;
+  const grandTotalTarget = targetTotal;
+
+  // Gestion de l'édition du nombre cible
+  const handleEditTarget = () => {
+    setIsEditingTarget(true);
+    setTempTarget(String(targetTotal));
+  };
+
+  const handleSaveTarget = () => {
+    const parsed = parseInt(tempTarget, 10);
+    if (!isNaN(parsed) && parsed > 0) {
+      saveTargetTotal(parsed);
+    } else {
+      setTempTarget(String(targetTotal));
+    }
+    setIsEditingTarget(false);
+  };
+
+  const handleCancelEdit = () => {
+    setTempTarget(String(targetTotal));
+    setIsEditingTarget(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSaveTarget();
+    } else if (e.key === 'Escape') {
+      handleCancelEdit();
+    }
+  };
 
   return (
     <div className="flex flex-col h-full bg-stone-50 overflow-hidden font-sans">
-      <div className="bg-stone-800 text-stone-200 text-xs font-bold uppercase p-3 text-center tracking-wider border-b border-stone-600 shadow-md z-10">
+      <div className="bg-stone-800 text-stone-200 text-xs font-bold uppercase p-2 text-center tracking-wider border-b border-stone-600 shadow-md z-10">
         📊 Tableau de Bord
       </div>
 
-      <div className="overflow-y-auto p-3 scrollbar-thin scrollbar-thumb-stone-400 space-y-6">
+      <div className="overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-stone-400 space-y-2">
 
-        {/* GLOBAL TOTAL */}
-        <div className="bg-amber-100 border border-amber-300 rounded-lg p-3 shadow-sm">
-          <div className="flex justify-between items-end mb-1">
-            <span className="text-amber-900 font-bold uppercase text-xs tracking-wider">Progression Totale</span>
-            <span className={`text-lg font-bold font-mono ${getStatusColor(grandTotalCurrent, grandTotalTarget)}`}>
-              {grandTotalCurrent} <span className="text-sm text-gray-500 font-medium">/ {grandTotalTarget}</span>
+        {/* EDITABLE TARGET TOTAL - Compact */}
+        <div className="bg-blue-50 border border-blue-200 rounded p-2">
+          <div className="flex justify-between items-center mb-1">
+            <span className="text-blue-900 font-bold text-[11px] uppercase">🎯 Objectif</span>
+            {!isEditingTarget && (
+              <button
+                onClick={handleEditTarget}
+                className="text-blue-600 hover:text-blue-800 text-[10px] underline"
+              >
+                Modifier
+              </button>
+            )}
+          </div>
+
+          {isEditingTarget ? (
+            <div className="flex items-center gap-1">
+              <input
+                type="number"
+                value={tempTarget}
+                onChange={(e) => setTempTarget(e.target.value)}
+                onKeyDown={handleKeyDown}
+                className="flex-1 px-2 py-1 text-sm border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                autoFocus
+                min="1"
+              />
+              <button
+                onClick={handleSaveTarget}
+                className="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs"
+              >
+                ✓
+              </button>
+              <button
+                onClick={handleCancelEdit}
+                className="bg-gray-400 hover:bg-gray-500 text-white px-2 py-1 rounded text-xs"
+              >
+                ✕
+              </button>
+            </div>
+          ) : (
+            <div className="text-center">
+              <span className="text-2xl font-bold text-blue-800 font-mono">{targetTotal}</span>
+            </div>
+          )}
+        </div>
+
+        {/* PROGRESSION TOTALE - Compact */}
+        <div className="bg-amber-50 border border-amber-200 rounded p-2">
+          <div className="flex justify-between items-center mb-1">
+            <span className="text-amber-900 font-bold text-[11px] uppercase">Total</span>
+            <span className={`text-sm font-bold font-mono ${getStatusColor(grandTotalCurrent, grandTotalTarget)}`}>
+              {grandTotalCurrent}<span className="text-gray-400 text-xs">/{grandTotalTarget}</span>
             </span>
           </div>
-          <div className="w-full bg-amber-200 rounded-full h-2.5 overflow-hidden">
+          <div className="w-full bg-amber-200 rounded-full h-2 overflow-hidden">
             <div
-              className="bg-amber-600 h-2.5 rounded-full transition-all duration-500"
+              className="bg-amber-600 h-2 rounded-full transition-all duration-500"
               style={{ width: `${Math.min(100, (grandTotalCurrent / grandTotalTarget) * 100)}%` }}
             ></div>
           </div>
+          <div className="text-[10px] text-amber-700 text-right mt-0.5">
+            {Math.round((grandTotalCurrent / grandTotalTarget) * 100)}%
+          </div>
         </div>
 
-        {/* SECTION DONJON */}
-        <div>
-          <div className="flex items-center justify-between mb-2 border-b-2 border-[#8b0000]/30 pb-1">
-            <h4 className="text-sm font-bold text-[#8b0000] uppercase flex items-center gap-2">
-              🚪 Donjon
-            </h4>
-            <span className={`font-mono text-xs font-bold ${getStatusColor(totalDungeonCurrent, totalDungeonTarget)}`}>
-              {totalDungeonCurrent} / {totalDungeonTarget}
+        {/* PROGRESSION VALIDÉE - Compact */}
+        <div className="bg-green-50 border border-green-200 rounded p-2">
+          <div className="flex justify-between items-center mb-1">
+            <span className="text-green-900 font-bold text-[11px] uppercase">✓ Validées</span>
+            <span className={`text-sm font-bold font-mono ${getStatusColor(grandTotalValidated, grandTotalTarget)}`}>
+              {grandTotalValidated}<span className="text-gray-400 text-xs">/{grandTotalTarget}</span>
             </span>
           </div>
+          <div className="w-full bg-green-200 rounded-full h-2 overflow-hidden">
+            <div
+              className="bg-green-600 h-2 rounded-full transition-all duration-500"
+              style={{ width: `${Math.min(100, (grandTotalValidated / grandTotalTarget) * 100)}%` }}
+            ></div>
+          </div>
+          <div className="text-[10px] text-green-700 text-right mt-0.5">
+            {Math.round((grandTotalValidated / grandTotalTarget) * 100)}%
+          </div>
+        </div>
 
-          <div className="space-y-0.5 pl-1">
-            <StatRow label="Classes" current={classes} target={TARGETS.CLASSES} />
-            <StatRow label="Races" current={races} target={TARGETS.RACES} />
-            <StatRow label="Malédictions" current={curses} target={TARGETS.CURSES} />
-            <StatRow label="Modificateurs/Autres" current={modifiers} target={TARGETS.MODIFIERS} />
-
-            <div className="mt-3 mb-1">
-              <span className="text-[10px] text-gray-500 font-bold uppercase block mb-1 border-b border-gray-200">Monstres</span>
-              <StatRow label="Niv 1-5" current={m1_5} target={TARGETS.MONSTER_1_5} />
-              <StatRow label="Niv 6-10" current={m6_10} target={TARGETS.MONSTER_6_10} />
-              <StatRow label="Niv 11-15" current={m11_15} target={TARGETS.MONSTER_11_15} />
-              <StatRow label="Niv 16-20" current={m16_20} target={TARGETS.MONSTER_16_20} />
+        {/* SECTION DONJON - Compact */}
+        <div className="border border-gray-200 rounded overflow-hidden">
+          <button
+            onClick={toggleDungeonExpanded}
+            className="w-full bg-gradient-to-r from-red-900 to-red-800 hover:from-red-800 hover:to-red-700 text-white p-2 flex items-center justify-between transition-colors"
+          >
+            <div className="flex items-center gap-1.5">
+              <span className="text-base">🚪</span>
+              <span className="text-xs font-bold uppercase">Donjon</span>
             </div>
-          </div>
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-xs font-bold">
+                {totalDungeonCurrent}/<span className="text-green-300">✓{totalDungeonValidated}</span>/{totalDungeonTarget}
+              </span>
+              <span className="text-sm transition-transform duration-200" style={{ transform: isDungeonExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                ▼
+              </span>
+            </div>
+          </button>
+
+          {isDungeonExpanded && (
+            <div className="bg-white p-2">
+              <StatRow label="Race" current={raceCount} validated={raceValidated} target={adjustedTargets.RACE} />
+              <StatRow label="Classe" current={classCount} validated={classValidated} target={adjustedTargets.CLASS} />
+              <StatRow label="Piège D." current={dungeonTrapCount} validated={dungeonTrapValidated} target={adjustedTargets.DUNGEON_TRAP} />
+              <StatRow label="Fidèle S." current={faithfulServantCount} validated={faithfulServantValidated} target={adjustedTargets.FAITHFUL_SERVANT} />
+              <StatRow label="Bonus D." current={dungeonBonusCount} validated={dungeonBonusValidated} target={adjustedTargets.DUNGEON_BONUS} />
+              <StatRow label="Niveau +" current={levelUpCount} validated={levelUpValidated} target={adjustedTargets.LEVEL_UP} />
+              <StatRow label="Malédic." current={curseCount} validated={curseValidated} target={adjustedTargets.CURSE} />
+              <StatRow label="Monstres" current={monsterCount} validated={monsterValidated} target={adjustedTargets.MONSTER} />
+            </div>
+          )}
         </div>
 
-        {/* SECTION TRÉSOR */}
-        <div>
-          <div className="flex items-center justify-between mb-2 border-b-2 border-[#b8860b]/30 pb-1">
-            <h4 className="text-sm font-bold text-[#b8860b] uppercase flex items-center gap-2">
-              💰 Trésor
-            </h4>
-            <span className={`font-mono text-xs font-bold ${getStatusColor(totalTreasureCurrent, totalTreasureTarget)}`}>
-              {totalTreasureCurrent} / {totalTreasureTarget}
-            </span>
-          </div>
+        {/* SECTION TRÉSOR - Compact */}
+        <div className="border border-gray-200 rounded overflow-hidden">
+          <button
+            onClick={toggleTreasureExpanded}
+            className="w-full bg-gradient-to-r from-yellow-700 to-yellow-600 hover:from-yellow-600 hover:to-yellow-500 text-white p-2 flex items-center justify-between transition-colors"
+          >
+            <div className="flex items-center gap-1.5">
+              <span className="text-base">💰</span>
+              <span className="text-xs font-bold uppercase">Trésor</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-xs font-bold">
+                {totalTreasureCurrent}/<span className="text-green-300">✓{totalTreasureValidated}</span>/{totalTreasureTarget}
+              </span>
+              <span className="text-sm transition-transform duration-200" style={{ transform: isTreasureExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                ▼
+              </span>
+            </div>
+          </button>
 
-          <div className="space-y-0.5 pl-1">
-            <StatRow label="Couvre-chef" current={head} target={TARGETS.HEAD} />
-            <StatRow label="Armures" current={armor} target={TARGETS.ARMOR} />
-            <StatRow label="Chaussures" current={feet} target={TARGETS.FEET} />
-            <StatRow label="Mains / Armes" current={hands} target={TARGETS.HANDS} />
-            <StatRow label="Autres Équip." current={otherEquip} target={TARGETS.TREASURE_OTHER} />
-            <StatRow label="Usage Unique / GUAL" current={oneshot} target={TARGETS.ONESHOT_GUAL} />
-          </div>
+          {isTreasureExpanded && (
+            <div className="bg-white p-2">
+              <StatRow label="Piège T." current={treasureTrapCount} validated={treasureTrapValidated} target={adjustedTargets.TREASURE_TRAP} />
+              <StatRow label="Objets" current={itemCount} validated={itemValidated} target={adjustedTargets.ITEM} />
+            </div>
+          )}
         </div>
 
       </div>
