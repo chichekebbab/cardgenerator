@@ -21,6 +21,7 @@ const CARD_TYPE_ORDER: CardType[] = [
   CardType.LEVEL_UP,
   CardType.FAITHFUL_SERVANT,
   CardType.DUNGEON_TRAP,
+  CardType.DUNGEON_BONUS,
   CardType.TREASURE_TRAP,
   CardType.OTHER,
 ];
@@ -44,6 +45,8 @@ const getSectionStyle = (type: CardType) => {
       return { bg: 'bg-indigo-50', border: 'border-indigo-200', header: 'bg-indigo-600', icon: '🐕' };
     case CardType.DUNGEON_TRAP:
       return { bg: 'bg-rose-50', border: 'border-rose-200', header: 'bg-rose-600', icon: '🕸️' };
+    case CardType.DUNGEON_BONUS:
+      return { bg: 'bg-orange-50', border: 'border-orange-200', header: 'bg-orange-600', icon: '✨' };
     case CardType.TREASURE_TRAP:
       return { bg: 'bg-emerald-50', border: 'border-emerald-200', header: 'bg-emerald-600', icon: '💣' };
     default:

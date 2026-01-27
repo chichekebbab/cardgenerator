@@ -8,6 +8,7 @@ export enum CardType {
   LEVEL_UP = 'Gain de niveau',
   FAITHFUL_SERVANT = 'Fidèle serviteur',
   DUNGEON_TRAP = 'Piège Donjon',
+  DUNGEON_BONUS = 'Bonus Donjon',
   TREASURE_TRAP = 'Piège Trésor',
   OTHER = 'Autre'
 }

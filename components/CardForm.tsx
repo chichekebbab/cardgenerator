@@ -185,8 +185,8 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
                 onChange({
                   ...cardData,
                   type: newType,
-                  bonus: newType === CardType.LEVEL_UP ? 1 : (newType === CardType.DUNGEON_TRAP || newType === CardType.TREASURE_TRAP) ? '' : cardData.bonus,
-                  gold: (newType === CardType.DUNGEON_TRAP || newType === CardType.TREASURE_TRAP) ? '' : cardData.gold
+                  bonus: newType === CardType.LEVEL_UP ? 1 : (newType === CardType.DUNGEON_TRAP || newType === CardType.DUNGEON_BONUS || newType === CardType.TREASURE_TRAP) ? '' : cardData.bonus,
+                  gold: (newType === CardType.DUNGEON_TRAP || newType === CardType.DUNGEON_BONUS || newType === CardType.TREASURE_TRAP) ? '' : cardData.gold
                 });
               }}
               className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
@@ -220,7 +220,7 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
               />
             </div>
           )}
-          {(cardData.type === CardType.ITEM || cardData.type === CardType.LEVEL_UP || cardData.type === CardType.FAITHFUL_SERVANT || cardData.type === CardType.DUNGEON_TRAP || cardData.type === CardType.TREASURE_TRAP) && (
+          {(cardData.type === CardType.ITEM || cardData.type === CardType.LEVEL_UP || cardData.type === CardType.FAITHFUL_SERVANT || cardData.type === CardType.DUNGEON_TRAP || cardData.type === CardType.DUNGEON_BONUS || cardData.type === CardType.TREASURE_TRAP) && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Bonus</label>
               <input

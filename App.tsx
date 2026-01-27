@@ -5,6 +5,7 @@ import DeckStats from './components/DeckStats';
 import CardGallery from './components/CardGallery';
 import CardList from './components/CardList';
 import ImportModal from './components/ImportModal';
+import CardNavigation from './components/CardNavigation';
 import { CardData, INITIAL_CARD_DATA } from './types';
 import { saveCardToSheet, fetchCardsFromSheet, deleteCardFromSheet } from './services/sheetService';
 
@@ -352,6 +353,57 @@ const App: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // Get cards of the same type as the current card, sorted by creation date
+  const getSameTypeCards = (currentCard: CardData): CardData[] => {
+    return savedCards
+      .filter(card => card.type === currentCard.type)
+      .reverse(); // Oldest first (since savedCards is newest first)
+  };
+
+  // Navigate to next/previous card of the same type
+  const navigateToSiblingCard = (direction: 'prev' | 'next') => {
+    const sameTypeCards = getSameTypeCards(cardData);
+    if (sameTypeCards.length <= 1) return; // No siblings to navigate to
+
+    const currentIndex = sameTypeCards.findIndex(c => c.id === cardData.id);
+    if (currentIndex === -1) return; // Current card not found
+
+    let newIndex: number;
+    if (direction === 'next') {
+      newIndex = (currentIndex + 1) % sameTypeCards.length;
+    } else {
+      newIndex = (currentIndex - 1 + sameTypeCards.length) % sameTypeCards.length;
+    }
+
+    setCardData(sameTypeCards[newIndex]);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Keyboard navigation support (arrow keys)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only navigate if we're in the editor view and there are saved cards
+      if (activeView !== 'editor' || savedCards.length === 0) return;
+
+      // Prevent navigation if user is typing in an input or textarea
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        return;
+      }
+
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        navigateToSiblingCard('prev');
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        navigateToSiblingCard('next');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeView, savedCards, cardData]); // Dependencies to keep the handler updated
+
   // Quick update for inline editing in list view (silent save)
   const handleQuickUpdateCard = async (updatedCard: CardData) => {
     if (!scriptUrl) return;
@@ -638,6 +690,16 @@ const App: React.FC = () => {
 
               {/* Right: Editor (6 cols) */}
               <div className="lg:col-span-6 order-2 lg:order-3">
+                {/* Card Navigation - only show if there are saved cards */}
+                {savedCards.length > 0 && (
+                  <div className="mb-4">
+                    <CardNavigation
+                      currentCard={cardData}
+                      sameTypeCards={getSameTypeCards(cardData)}
+                      onNavigate={navigateToSiblingCard}
+                    />
+                  </div>
+                )}
                 <CardForm
                   cardData={cardData}
                   onChange={setCardData}

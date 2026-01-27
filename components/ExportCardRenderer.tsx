@@ -22,6 +22,7 @@ const ExportCardRenderer = forwardRef<HTMLDivElement, ExportCardRendererProps>((
             case CardType.LEVEL_UP:
             case CardType.FAITHFUL_SERVANT:
             case CardType.DUNGEON_TRAP:
+            case CardType.DUNGEON_BONUS:
             case CardType.TREASURE_TRAP:
                 return { value: data.bonus !== '' ? `+${data.bonus}` : '' };
             default:
@@ -200,7 +201,7 @@ const ExportCardRenderer = forwardRef<HTMLDivElement, ExportCardRendererProps>((
                                 <>
                                     {data.type === CardType.ITEM && "Sans Valeur"}
                                     {data.type === CardType.MONSTER && "Pas de Trésor"}
-                                    {data.type !== CardType.ITEM && data.type !== CardType.MONSTER && data.type !== CardType.DUNGEON_TRAP && data.type !== CardType.TREASURE_TRAP && (
+                                    {data.type !== CardType.ITEM && data.type !== CardType.MONSTER && data.type !== CardType.DUNGEON_TRAP && data.type !== CardType.DUNGEON_BONUS && data.type !== CardType.TREASURE_TRAP && (
                                         <span className="opacity-80">{data.type}</span>
                                     )}
                                 </>
