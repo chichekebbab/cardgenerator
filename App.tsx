@@ -334,9 +334,17 @@ const App: React.FC = () => {
   };
 
   const handleImportCards = async (cards: CardData[]) => {
+    let successCount = 0;
+
     if (!scriptUrl) {
       // If no script URL, just add to local state
       setSavedCards(prev => [...cards, ...prev]);
+      successCount = cards.length;
+      if (cards.length > 0) {
+        handleSelectCard(cards[0]);
+        setShowImportModal(false);
+        showNotification(`${successCount} carte(s) importée(s) localement.`, 'success');
+      }
       return;
     }
 
@@ -348,6 +356,7 @@ const App: React.FC = () => {
         if (result.imageUrl && (result.imageUrl.startsWith('http') || result.imageUrl.startsWith('data:'))) {
           card.storedImageUrl = result.imageUrl;
         }
+        successCount++;
       } catch (e) {
         console.error('Erreur lors de la sauvegarde de la carte:', e);
         // Continue with other cards even if one fails
@@ -356,6 +365,18 @@ const App: React.FC = () => {
 
     // Refresh the saved cards list
     await loadSavedCards(scriptUrl);
+
+    // Redirect to the first imported card and close modal
+    if (cards.length > 0) {
+      handleSelectCard(cards[0]);
+      setShowImportModal(false);
+
+      if (successCount === cards.length) {
+        showNotification(`${successCount} carte(s) importée(s) avec succès !`, 'success');
+      } else {
+        showNotification(`${successCount}/${cards.length} carte(s) importée(s).`, successCount > 0 ? 'info' : 'error');
+      }
+    }
   };
 
   const handleSelectCard = (card: CardData) => {
