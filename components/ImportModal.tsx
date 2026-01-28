@@ -164,6 +164,7 @@ const parseImportData = (input: string): ImportResult => {
         imageOffsetY: cardJson.imageOffsetY ?? 0,
         isBaseCard: cardJson.isBaseCard || false,
         isValidated: cardJson.isValidated || false,
+        internalComment: cardJson.internalComment || '',
       };
 
       success.push(finalCard);
