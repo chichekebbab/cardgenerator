@@ -478,7 +478,7 @@ const App: React.FC = () => {
               >
                 ⚙️
               </button>
-              <a href="https://github.com/tidoe/MunchkinEditor" target="_blank" className="text-sm text-amber-300 hover:text-white underline hidden sm:inline">GitHub</a>
+              <a href="https://github.com/chichekebbab/cardgenerator" target="_blank" className="text-sm text-amber-300 hover:text-white underline hidden sm:inline">GitHub</a>
             </div>
           </div>
 
