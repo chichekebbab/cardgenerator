@@ -25,12 +25,12 @@ const BASE_TARGETS = {
 const DEFAULT_TOTAL = 350;
 
 // Fonction utilitaire pour la couleur de progression
-const getStatusColor = (current: number, target: number) => {
+const getStatusColor = (current: number, target: number, isDark: boolean = false) => {
   const percentage = target > 0 ? current / target : 0;
-  if (percentage >= 1.0) return 'text-green-600';
-  if (percentage >= 0.9) return 'text-green-500';
-  if (percentage >= 0.5) return 'text-orange-500';
-  return 'text-red-500';
+  if (percentage >= 1.0) return isDark ? 'text-emerald-400' : 'text-emerald-600';
+  if (percentage >= 0.85) return isDark ? 'text-green-400' : 'text-green-600';
+  if (percentage >= 0.5) return isDark ? 'text-amber-400' : 'text-amber-500';
+  return isDark ? 'text-rose-400' : 'text-rose-500';
 };
 
 const StatRow: React.FC<{
@@ -39,17 +39,18 @@ const StatRow: React.FC<{
   validated: number;
   target: number;
 }> = ({ label, current, validated, target }) => {
-  const colorClass = getStatusColor(current, target);
+  const colorClass = getStatusColor(validated, target);
+  const secondaryColorClass = getStatusColor(current, target);
 
   return (
-    <div className="flex justify-between items-center text-xs py-1 px-2">
+    <div className="flex justify-between items-center text-xs py-1.5 px-2 hover:bg-stone-50 transition-colors border-b border-stone-100 last:border-0">
       <span className="text-gray-600 truncate max-w-[80px]" title={label}>{label}</span>
       <div className="flex items-center gap-1.5 font-mono text-xs">
-        <span className={colorClass} title="Total">{current}</span>
-        <span className="text-gray-300">/</span>
-        <span className="text-green-600" title="Validées">✓{validated}</span>
-        <span className="text-gray-300">/</span>
-        <span className="text-gray-400">{target}</span>
+        <span className={`${colorClass} font-bold`} title="Validées">✓{validated}</span>
+        <span className="text-stone-300">/</span>
+        <span className={`${secondaryColorClass} opacity-60 text-[10px]`} title="Générées">{current}</span>
+        <span className="text-stone-300">/</span>
+        <span className="text-stone-400" title="Cible">{target}</span>
       </div>
     </div>
   );
@@ -267,41 +268,51 @@ const DeckStats: React.FC<DeckStatsProps> = ({ cards }) => {
           )}
         </div>
 
-        {/* PROGRESSION TOTALE - Compact */}
-        <div className="bg-amber-50 border border-amber-200 rounded p-2">
-          <div className="flex justify-between items-center mb-1">
-            <span className="text-amber-900 font-bold text-[11px] uppercase">Total</span>
-            <span className={`text-sm font-bold font-mono ${getStatusColor(grandTotalCurrent, grandTotalTarget)}`}>
-              {grandTotalCurrent}<span className="text-gray-400 text-xs">/{grandTotalTarget}</span>
-            </span>
+        {/* PROGRESSION GLOBALE - Refonte */}
+        <div className="bg-stone-100 border border-stone-200 rounded p-2 shadow-sm">
+          <div className="flex justify-between items-center mb-1.5">
+            <span className="text-stone-700 font-bold text-[11px] uppercase tracking-wider">État Global</span>
+            <div className="font-mono text-sm font-bold flex items-center gap-1.5">
+              <span className={`${getStatusColor(grandTotalValidated, grandTotalTarget)}`} title="Total Validées">✓{grandTotalValidated}</span>
+              <span className="text-stone-300">/</span>
+              <span className="text-stone-400 text-xs" title="Total Générées">{grandTotalCurrent}</span>
+              <span className="text-stone-300">/</span>
+              <span className="text-stone-400" title="Objectif">{grandTotalTarget}</span>
+            </div>
           </div>
-          <div className="w-full bg-amber-200 rounded-full h-2 overflow-hidden">
-            <div
-              className="bg-amber-600 h-2 rounded-full transition-all duration-500"
-              style={{ width: `${Math.min(100, (grandTotalCurrent / grandTotalTarget) * 100)}%` }}
-            ></div>
-          </div>
-          <div className="text-[10px] text-amber-700 text-right mt-0.5">
-            {Math.round((grandTotalCurrent / grandTotalTarget) * 100)}%
-          </div>
-        </div>
 
-        {/* PROGRESSION VALIDÉE - Compact */}
-        <div className="bg-green-50 border border-green-200 rounded p-2">
-          <div className="flex justify-between items-center mb-1">
-            <span className="text-green-900 font-bold text-[11px] uppercase">✓ Validées</span>
-            <span className={`text-sm font-bold font-mono ${getStatusColor(grandTotalValidated, grandTotalTarget)}`}>
-              {grandTotalValidated}<span className="text-gray-400 text-xs">/{grandTotalTarget}</span>
-            </span>
-          </div>
-          <div className="w-full bg-green-200 rounded-full h-2 overflow-hidden">
-            <div
-              className="bg-green-600 h-2 rounded-full transition-all duration-500"
-              style={{ width: `${Math.min(100, (grandTotalValidated / grandTotalTarget) * 100)}%` }}
-            ></div>
-          </div>
-          <div className="text-[10px] text-green-700 text-right mt-0.5">
-            {Math.round((grandTotalValidated / grandTotalTarget) * 100)}%
+          <div className="space-y-1.5">
+            {/* Barre de progression Validée (Primaire) */}
+            <div className="relative">
+              <div className="w-full bg-stone-200 rounded-full h-2 overflow-hidden">
+                <div
+                  className={`h-2 rounded-full transition-all duration-700 ease-out ${getStatusColor(grandTotalValidated, grandTotalTarget).replace('text-', 'bg-')}`}
+                  style={{ width: `${Math.min(100, (grandTotalValidated / grandTotalTarget) * 100)}%` }}
+                ></div>
+              </div>
+              <div className="flex justify-between items-center mt-0.5 px-0.5">
+                <span className="text-[9px] text-stone-500 uppercase font-bold">Validation (Cible)</span>
+                <span className={`text-[10px] font-bold ${getStatusColor(grandTotalValidated, grandTotalTarget)}`}>
+                  {Math.round((grandTotalValidated / grandTotalTarget) * 100)}%
+                </span>
+              </div>
+            </div>
+
+            {/* Barre de progression Générée (Secondaire) */}
+            <div>
+              <div className="w-full bg-stone-200 rounded-full h-1 overflow-hidden">
+                <div
+                  className="bg-stone-400 h-1 rounded-full transition-all duration-700 ease-out opacity-40"
+                  style={{ width: `${Math.min(100, (grandTotalCurrent / grandTotalTarget) * 100)}%` }}
+                ></div>
+              </div>
+              <div className="flex justify-between items-center mt-0.5 px-0.5">
+                <span className="text-[9px] text-stone-400 uppercase font-medium">Génération totale</span>
+                <span className="text-[10px] text-stone-400 font-bold">
+                  {Math.round((grandTotalCurrent / grandTotalTarget) * 100)}%
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -316,8 +327,12 @@ const DeckStats: React.FC<DeckStatsProps> = ({ cards }) => {
               <span className="text-xs font-bold uppercase">Donjon</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="font-mono text-xs font-bold">
-                {totalDungeonCurrent}/<span className="text-green-300">✓{totalDungeonValidated}</span>/{totalDungeonTarget}
+              <span className="font-mono text-xs font-bold flex items-center gap-1">
+                <span className={getStatusColor(totalDungeonValidated, totalDungeonTarget, true)}>✓{totalDungeonValidated}</span>
+                <span className="text-white/20">/</span>
+                <span className="text-white/40 text-[10px]">{totalDungeonCurrent}</span>
+                <span className="text-white/20">/</span>
+                <span className="text-white/60">{totalDungeonTarget}</span>
               </span>
               <span className="text-sm transition-transform duration-200" style={{ transform: isDungeonExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
                 ▼
@@ -350,8 +365,12 @@ const DeckStats: React.FC<DeckStatsProps> = ({ cards }) => {
               <span className="text-xs font-bold uppercase">Trésor</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="font-mono text-xs font-bold">
-                {totalTreasureCurrent}/<span className="text-green-300">✓{totalTreasureValidated}</span>/{totalTreasureTarget}
+              <span className="font-mono text-xs font-bold flex items-center gap-1">
+                <span className={getStatusColor(totalTreasureValidated, totalTreasureTarget, true)}>✓{totalTreasureValidated}</span>
+                <span className="text-white/20">/</span>
+                <span className="text-white/40 text-[10px]">{totalTreasureCurrent}</span>
+                <span className="text-white/20">/</span>
+                <span className="text-white/60">{totalTreasureTarget}</span>
               </span>
               <span className="text-sm transition-transform duration-200" style={{ transform: isTreasureExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
                 ▼

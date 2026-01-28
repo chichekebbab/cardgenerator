@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { CardData } from '../types';
 import ExportCardRenderer from './ExportCardRenderer';
-import { getLayoutFilename, getCardCategory } from '../utils/layoutUtils';
+import { getLayoutFilename, getCardCategory, getExportFilename } from '../utils/layoutUtils';
 import { toPng } from 'html-to-image';
 import JSZip from 'jszip';
 import { useNotification } from './NotificationContext';
@@ -60,29 +60,8 @@ const BatchExportRenderer: React.FC<BatchExportRendererProps> = ({ cards, onComp
                     if (blob) {
                         const card = cards[currentIndex];
 
-                        // Déterminer la catégorie (Donjon ou Trésor)
-                        const category = getCardCategory(card);
-
-                        // Nettoyer le type de carte (remplacer espaces par tirets, enlever accents)
-                        const cardType = card.type
-                            .normalize("NFD")
-                            .replace(/[\u0300-\u036f]/g, "") // Enlever les accents
-                            .replace(/\s+/g, '-'); // Remplacer espaces par tirets
-
-                        // Numéro de la carte (3 chiffres)
-                        const cardNumber = String(currentIndex + 1).padStart(3, '0');
-
-                        // Nettoyer le nom de la carte (enlever caractères spéciaux, garder underscores et tirets)
-                        const cleanTitle = (card.title || "carte")
-                            .normalize("NFD")
-                            .replace(/[\u0300-\u036f]/g, "") // Enlever les accents
-                            .replace(/[^a-z0-9\-_]/gi, '-') // Remplacer caractères spéciaux par tirets
-                            .replace(/-+/g, '-') // Remplacer tirets multiples par un seul
-                            .replace(/^-|-$/g, '') // Enlever tirets au début et à la fin
-                            .toLowerCase();
-
                         // Format final : CATEGORIE_TYPE-DE-CARTE_NUMERO-DE-LA-CARTE_NOM
-                        const filename = `${category}_${cardType}_${cardNumber}_${cleanTitle}.png`;
+                        const filename = getExportFilename(card, currentIndex);
 
                         zipRef.current.file(filename, blob);
                     }

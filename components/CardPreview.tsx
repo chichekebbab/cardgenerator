@@ -3,12 +3,14 @@ import { CardData, CardType } from '../types';
 import { toPng } from 'html-to-image';
 import ExportCardRenderer from './ExportCardRenderer';
 import { useNotification } from './NotificationContext';
+import { getExportFilename } from '../utils/layoutUtils';
 
 interface CardPreviewProps {
     data: CardData;
+    index?: number;
 }
 
-const CardPreview: React.FC<CardPreviewProps> = ({ data }) => {
+const CardPreview: React.FC<CardPreviewProps> = ({ data, index }) => {
     const cardRef = useRef<HTMLDivElement>(null);
     const exportRef = useRef<HTMLDivElement>(null);
     const [isDownloading, setIsDownloading] = useState(false);
@@ -178,11 +180,11 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data }) => {
                 cacheBust: true
             });
 
-            const cleanTitle = (data.title || "carte-munchkin").replace(/[^a-z0-9]/gi, '_').toLowerCase();
+            const filename = getExportFilename(data, index);
 
             const link = document.createElement("a");
             link.href = dataUrl;
-            link.download = `${cleanTitle}.png`;
+            link.download = filename;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);

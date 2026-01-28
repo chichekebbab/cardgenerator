@@ -690,7 +690,10 @@ const App: React.FC = () => {
               <div className="lg:col-span-4 order-1 lg:order-2 lg:sticky lg:top-32">
                 <div className="bg-white rounded-lg shadow-xl overflow-hidden border-2 border-amber-900/10">
                   <div className="bg-gray-50 border-b p-2 text-center text-xs text-gray-500 font-mono uppercase">Aperçu de la Carte</div>
-                  <CardPreview data={cardData} />
+                  {(() => {
+                    const idx = savedCards.findIndex(c => c.id === cardData.id);
+                    return <CardPreview data={cardData} index={idx !== -1 ? idx : undefined} />;
+                  })()}
                 </div>
               </div>
 
