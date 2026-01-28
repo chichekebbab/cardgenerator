@@ -162,6 +162,7 @@ const parseImportData = (input: string): ImportResult => {
         imageScale: cardJson.imageScale ?? 100,
         imageOffsetX: cardJson.imageOffsetX ?? 0,
         imageOffsetY: cardJson.imageOffsetY ?? 0,
+        descriptionBoxScale: cardJson.descriptionBoxScale ?? 100,
         isBaseCard: cardJson.isBaseCard || false,
         isValidated: cardJson.isValidated || false,
         internalComment: cardJson.internalComment || '',

@@ -511,6 +511,30 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
           </div>
         </div>
 
+        {/* Description Box Size Control */}
+        <div className="mb-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Taille de l'encart "Description"</label>
+            <select
+              value={cardData.descriptionBoxScale || 100}
+              onChange={(e) => handleChange('descriptionBoxScale', parseInt(e.target.value))}
+              className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+            >
+              <option value={100}>100% (Défaut)</option>
+              <option value={110}>110%</option>
+              <option value={120}>120%</option>
+              <option value={130}>130%</option>
+              <option value={140}>140%</option>
+              <option value={150}>150%</option>
+              <option value={160}>160%</option>
+              <option value={170}>170%</option>
+            </select>
+            <p className="text-xs text-gray-500 mt-1 italic">
+              Augmentez la taille si le texte est trop petit. L'encart s'agrandira vers le bas.
+            </p>
+          </div>
+        </div>
+
         {/* Descriptions */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>

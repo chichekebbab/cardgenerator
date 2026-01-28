@@ -37,6 +37,7 @@ export interface CardData {
   imageScale?: number; // Pourcentage de taille de l'image (défaut 100)
   imageOffsetX?: number; // Décalage horizontal en %
   imageOffsetY?: number; // Décalage vertical en %
+  descriptionBoxScale?: number; // Pourcentage de taille de l'encart description (défaut 100)
   isBaseCard: boolean;
   isValidated: boolean;
   internalComment: string;
@@ -62,6 +63,7 @@ export const INITIAL_CARD_DATA: CardData = {
   imageScale: 100,
   imageOffsetX: 0,
   imageOffsetY: 0,
+  descriptionBoxScale: 100,
   isBaseCard: false,
   isValidated: false,
   internalComment: '',

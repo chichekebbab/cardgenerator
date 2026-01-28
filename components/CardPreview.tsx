@@ -46,7 +46,9 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data, index }) => {
         if (!descriptionRef.current) return;
 
         const container = descriptionRef.current;
-        const maxHeight = scaleY(500 - 229); // Hauteur max disponible
+        const baseMaxHeight = 325; // Hauteur de base de l'encart
+        const scaleFactor = (data.descriptionBoxScale || 100) / 100;
+        const maxHeight = scaleY(baseMaxHeight * scaleFactor);
 
         // Reset to base size
         let fontSize = 13;
@@ -59,7 +61,7 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data, index }) => {
                 setDescriptionFontSize(fontSize);
             }
         });
-    }, [data.description, data.badStuff, data.restrictions, data.type]);
+    }, [data.description, data.badStuff, data.restrictions, data.type, data.descriptionBoxScale]);
 
     // --- GESTION IMAGE CENTRALE (Art) ---
     useEffect(() => {
@@ -383,7 +385,7 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data, index }) => {
                                 left: scaleX(60),
                                 top: scaleY(229),
                                 width: scaleX(600 - 60),
-                                maxHeight: scaleY(500 - 229),
+                                maxHeight: scaleY(325 * ((data.descriptionBoxScale || 100) / 100)),
                                 overflow: 'hidden',
                                 backgroundImage: 'url(/texture/texture_description.png)',
                                 backgroundSize: 'cover',

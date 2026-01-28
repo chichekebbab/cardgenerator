@@ -110,7 +110,7 @@ const ExportCardRenderer = forwardRef<HTMLDivElement, ExportCardRendererProps>((
                             left: '60px',
                             top: '229px',
                             width: '541px',
-                            maxHeight: '271px',
+                            maxHeight: `${325 * ((data.descriptionBoxScale || 100) / 100) * 2}px`,
                             overflow: 'hidden',
                             backgroundImage: 'url(/texture/texture_description.png)',
                             backgroundSize: 'cover',
