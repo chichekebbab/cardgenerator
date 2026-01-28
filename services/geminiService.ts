@@ -1,16 +1,36 @@
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
+// Cache pour l'instance par défaut (celle avec la clé d'environnement)
+let defaultAiInstance: GoogleGenAI | null = null;
+
+const getAiInstance = (userApiKey?: string) => {
+  // Si une clé utilisateur est fournie, on crée une nouvelle instance
+  if (userApiKey) {
+    return new GoogleGenAI({ apiKey: userApiKey });
+  }
+
+  // Sinon on utilise l'instance par défaut (avec la clé du .env)
+  if (!defaultAiInstance) {
+    const envApiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    if (!envApiKey) {
+      console.warn("Aucune clé API Gemini trouvée dans l'environnement ni fournie par l'utilisateur.");
+    }
+    defaultAiInstance = new GoogleGenAI({ apiKey: envApiKey });
+  }
+  return defaultAiInstance;
+};
 
 /**
  * Generates an image using the 'nano banana' model (gemini-2.5-flash-image).
  * @param prompt The full text description of the image (pre-prompt + user prompt).
+ * @param apiKey Optional user-provided API key.
  * @returns The base64 encoded image string or throws an error.
  */
-export const generateCardArt = async (prompt: string): Promise<string> => {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  console.log("REM vs Elie", apiKey);
+export const generateCardArt = async (prompt: string, apiKey?: string): Promise<string> => {
   try {
+    const ai = getAiInstance(apiKey);
+
+    // Si on n'a ni clé utilisateur ni clé d'environnement (et que l'instance a été créée sans clé valide), ça plantera probablement ici.
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image', // Nano Banana mapping
       contents: {

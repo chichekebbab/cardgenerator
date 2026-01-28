@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { CardData, CardType, CardLayout } from '../types';
 import { generateCardArt } from '../services/geminiService';
-import { removeBackground, removeBackgroundFromUrl } from '../services/removeBgService';
+import { removeBackground, removeBackgroundFromUrl, hasDefaultRemoveBgKey } from '../services/removeBgService';
 import { useNotification } from './NotificationContext';
 
 interface CardFormProps {
@@ -14,13 +14,15 @@ interface CardFormProps {
   isSaving: boolean;
   hasScriptUrl: boolean;
   onImport: () => void;
-  removeBgApiKey?: string; // New: remove.bg API key
+
+  removeBgApiKey?: string; // remove.bg API key
+  geminiApiKey?: string; // New: Gemini API key
 }
 
 // Pré-prompt technique imposé (ne change jamais)
 const FIXED_PRE_PROMPT = "Génère une illustration au format carré (1x1). Le style artistique doit imiter parfaitement celui du jeu de cartes 'Munchkin' et du dessinateur John Kovalic : un style cartoon satirique, dessiné à la main, avec des contours noirs épais et une ambiance humoristique de fantasy. L'image doit présenter un seul élément isolé, centré. Il ne doit y avoir absolument aucun texte sur l'image. Le fond doit être une couleur unie, neutre et simple, sans aucun décor ni détail. Voici l'élément à générer :";
 
-const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, onDuplicate, onDelete, isSaving, hasScriptUrl, onImport, removeBgApiKey }) => {
+const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, onDuplicate, onDelete, isSaving, hasScriptUrl, onImport, removeBgApiKey, geminiApiKey }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isRemovingBg, setIsRemovingBg] = useState(false); // New: background removal state
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +44,7 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
     try {
       // On utilise le FIXED_PRE_PROMPT quoi qu'il arrive, en ignorant la DB
       const fullPrompt = `${FIXED_PRE_PROMPT} ${cardData.imagePrompt}`;
-      const base64Image = await generateCardArt(fullPrompt);
+      const base64Image = await generateCardArt(fullPrompt, geminiApiKey);
       // On sauvegarde l'image et on garde le pré-prompt technique dans les data pour info (même s'il n'est plus éditable)
       onChange({
         ...cardData,
@@ -59,7 +61,7 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
   };
 
   const handleRemoveBackground = async () => {
-    if (!removeBgApiKey) {
+    if (!removeBgApiKey && !hasDefaultRemoveBgKey) {
       setError("Clé API remove.bg non configurée. Ajoutez-la dans les paramètres (⚙️).");
       return;
     }
@@ -434,9 +436,9 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
             <div className="mt-3 pt-3 border-t border-gray-200">
               <button
                 onClick={handleRemoveBackground}
-                disabled={isRemovingBg || !removeBgApiKey}
+                disabled={isRemovingBg || (!removeBgApiKey && !hasDefaultRemoveBgKey)}
                 className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded transition-colors disabled:opacity-50 shadow-sm flex items-center justify-center gap-2"
-                title={!removeBgApiKey ? "Configurez d'abord votre clé API dans les paramètres" : "Supprimer l'arrière-plan de l'image"}
+                title={(!removeBgApiKey && !hasDefaultRemoveBgKey) ? "Configurez d'abord votre clé API dans les paramètres" : "Supprimer l'arrière-plan de l'image"}
               >
                 {isRemovingBg ? (
                   <>
@@ -450,9 +452,15 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
                   </>
                 )}
               </button>
-              {!removeBgApiKey && (
+
+              {(!removeBgApiKey && !hasDefaultRemoveBgKey) && (
                 <p className="text-xs text-gray-500 mt-1 text-center">
                   Configurez votre clé API remove.bg dans les paramètres (⚙️) pour utiliser cette fonction.
+                </p>
+              )}
+              {(!removeBgApiKey && hasDefaultRemoveBgKey) && (
+                <p className="text-xs text-gray-400 mt-1 text-center italic">
+                  Utilisation de la clé API par défaut du serveur.
                 </p>
               )}
             </div>
@@ -543,7 +551,7 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
 
       </div>
 
-    </div>
+    </div >
 
   );
 };

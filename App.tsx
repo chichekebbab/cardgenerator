@@ -167,7 +167,9 @@ const App: React.FC = () => {
   const [cardData, setCardData] = useState<CardData>(initCard);
   const [savedCards, setSavedCards] = useState<CardData[]>([]);
   const [scriptUrl, setScriptUrl] = useState<string>("");
-  const [removeBgApiKey, setRemoveBgApiKey] = useState<string>(""); // New: remove.bg API key
+
+  const [removeBgApiKey, setRemoveBgApiKey] = useState<string>(""); // remove.bg API key
+  const [geminiApiKey, setGeminiApiKey] = useState<string>(""); // New: Gemini API key
   const [showSettings, setShowSettings] = useState(false);
   const [activeTab, setActiveTab] = useState<'config' | 'code'>('config'); // Nouvel état pour les onglets modal settings
   const [activeView, setActiveView] = useState<'editor' | 'gallery' | 'list'>('editor'); // Nouvel état pour la navigation principale
@@ -189,6 +191,11 @@ const App: React.FC = () => {
     const savedApiKey = localStorage.getItem("removebg_api_key");
     if (savedApiKey) {
       setRemoveBgApiKey(savedApiKey);
+    }
+
+    const savedGeminiKey = localStorage.getItem("gemini_api_key");
+    if (savedGeminiKey) {
+      setGeminiApiKey(savedGeminiKey);
     }
   }, []);
 
@@ -212,7 +219,9 @@ const App: React.FC = () => {
 
   const handleScriptUrlSave = () => {
     localStorage.setItem("google_script_url", scriptUrl);
+
     localStorage.setItem("removebg_api_key", removeBgApiKey);
+    localStorage.setItem("gemini_api_key", geminiApiKey);
     setShowSettings(false);
     loadSavedCards(scriptUrl);
     showNotification("Paramètres enregistrés !", 'success');
@@ -566,7 +575,27 @@ const App: React.FC = () => {
                       placeholder="Votre clé API remove.bg"
                       className="w-full p-3 rounded bg-stone-900 border border-stone-600 text-amber-100 text-sm font-mono focus:border-amber-500 outline-none"
                     />
-                    <p className="text-xs text-amber-100/60 mt-1">Obtenez votre clé API sur <a href="https://www.remove.bg/api" target="_blank" className="underline hover:text-amber-200">remove.bg/api</a></p>
+                    <p className="text-xs text-amber-100/60 mt-1">
+                      Si vide, la clé par défaut du serveur sera utilisée (si disponible). Obtenez votre clé API sur <a href="https://www.remove.bg/api" target="_blank" className="underline hover:text-amber-200">remove.bg/api</a>
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm mb-2 text-amber-100 font-bold">Clé API Gemini (Génération d'images)</label>
+                    <input
+                      type="text"
+                      value={geminiApiKey}
+                      onChange={(e) => {
+                        const newVal = e.target.value;
+                        setGeminiApiKey(newVal);
+                        localStorage.setItem("gemini_api_key", newVal);
+                      }}
+                      placeholder="Votre clé API Google AI Studio (optionnel si configuré côté serveur)"
+                      className="w-full p-3 rounded bg-stone-900 border border-stone-600 text-amber-100 text-sm font-mono focus:border-amber-500 outline-none"
+                    />
+                    <p className="text-xs text-amber-100/60 mt-1">
+                      Si vide, la clé par défaut du serveur sera utilisée (si disponible). Obtenez une clé sur <a href="https://aistudio.google.com/app/apikey" target="_blank" className="underline hover:text-amber-200">aistudio.google.com</a>
+                    </p>
                   </div>
 
                   <div className="flex justify-end pt-2">
@@ -719,7 +748,9 @@ const App: React.FC = () => {
                   onImport={() => setShowImportModal(true)}
                   isSaving={isSaving}
                   hasScriptUrl={!!scriptUrl}
+
                   removeBgApiKey={removeBgApiKey}
+                  geminiApiKey={geminiApiKey}
                 />
               </div>
             </div>
