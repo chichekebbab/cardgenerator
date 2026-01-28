@@ -2,6 +2,7 @@ import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { CardData, CardType } from '../types';
 import { toPng } from 'html-to-image';
 import ExportCardRenderer from './ExportCardRenderer';
+import { useNotification } from './NotificationContext';
 
 interface CardPreviewProps {
     data: CardData;
@@ -11,6 +12,7 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data }) => {
     const cardRef = useRef<HTMLDivElement>(null);
     const exportRef = useRef<HTMLDivElement>(null);
     const [isDownloading, setIsDownloading] = useState(false);
+    const { showNotification } = useNotification();
 
     // States pour l'image centrale (Art)
     const [imgError, setImgError] = useState(false);
@@ -186,7 +188,7 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data }) => {
             document.body.removeChild(link);
         } catch (err) {
             console.error("Erreur lors du téléchargement :", err);
-            alert("Impossible de générer l'image. Vérifiez que toutes les images sont chargées.");
+            showNotification("Impossible de générer l'image. Vérifiez que toutes les images sont chargées.", 'error');
         } finally {
             setIsDownloading(false);
         }

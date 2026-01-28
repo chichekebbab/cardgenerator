@@ -8,6 +8,7 @@ import ImportModal from './components/ImportModal';
 import CardNavigation from './components/CardNavigation';
 import { CardData, INITIAL_CARD_DATA } from './types';
 import { saveCardToSheet, fetchCardsFromSheet, deleteCardFromSheet } from './services/sheetService';
+import { useNotification } from './components/NotificationContext';
 
 const GOOGLE_SCRIPT_TEMPLATE = `// CODE À COPIER DANS VOTRE GOOGLE APPS SCRIPT (fichier Code.gs)
 
@@ -175,6 +176,7 @@ const App: React.FC = () => {
   const [configError, setConfigError] = useState<string | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
   const [listSaveStatus, setListSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const { showNotification } = useNotification();
 
   // Charger l'URL du script et la clé API depuis le localStorage
   useEffect(() => {
@@ -259,7 +261,7 @@ const App: React.FC = () => {
 
       // Only show alert if NOT called from background removal (to avoid double alerts)
       if (!calledFromBackgroundRemoval) {
-        alert("Carte sauvegardée avec succès !");
+        showNotification("Carte sauvegardée avec succès !", 'success');
       }
 
       console.log("[SAVE] Scheduling cards list refresh in 2 seconds...");
@@ -271,7 +273,7 @@ const App: React.FC = () => {
       }, 2000);
     } catch (e: any) {
       console.error("[SAVE] Save error:", e);
-      alert("Erreur lors de la sauvegarde : " + e.message);
+      showNotification("Erreur lors de la sauvegarde : " + e.message, 'error');
     } finally {
       console.log("[SAVE] Save process completed");
       setIsSaving(false);
@@ -293,9 +295,9 @@ const App: React.FC = () => {
       await deleteCardFromSheet(scriptUrl, cardData.id);
       await loadSavedCards(scriptUrl);
       handleNewCard();
-      alert("Carte supprimée !");
+      showNotification("Carte supprimée !", 'success');
     } catch (e: any) {
-      alert("Erreur lors de la suppression : " + e.message);
+      showNotification("Erreur lors de la suppression : " + e.message, 'error');
     } finally {
       setIsSaving(false);
     }
@@ -313,7 +315,7 @@ const App: React.FC = () => {
     setCardData(duplicatedCard);
     // On reste sur l'éditeur pour modifier la copie
     setActiveView('editor');
-    alert("Carte dupliquée ! Vous éditez maintenant la copie.");
+    showNotification("Carte dupliquée ! Vous éditez maintenant la copie.", 'success');
   };
 
   const handleNewCard = () => {
@@ -441,7 +443,7 @@ const App: React.FC = () => {
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    alert("Code copié !");
+    showNotification("Code copié !", 'info');
   }
 
   return (

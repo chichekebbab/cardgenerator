@@ -4,6 +4,7 @@ import ExportCardRenderer from './ExportCardRenderer';
 import { getLayoutFilename, getCardCategory } from '../utils/layoutUtils';
 import { toPng } from 'html-to-image';
 import JSZip from 'jszip';
+import { useNotification } from './NotificationContext';
 
 interface BatchExportRendererProps {
     cards: CardData[];
@@ -16,6 +17,7 @@ const BatchExportRenderer: React.FC<BatchExportRendererProps> = ({ cards, onComp
     const exportRef = useRef<HTMLDivElement>(null);
     const zipRef = useRef<JSZip>(new JSZip());
     const isProcessingRef = useRef(false);
+    const { showNotification } = useNotification();
 
     useEffect(() => {
         const processNext = async () => {
@@ -31,7 +33,7 @@ const BatchExportRenderer: React.FC<BatchExportRendererProps> = ({ cards, onComp
                     document.body.removeChild(link);
                 } catch (e) {
                     console.error("Error generating zip", e);
-                    alert("Erreur lors de la création du fichier ZIP.");
+                    showNotification("Erreur lors de la création du fichier ZIP.", 'error');
                 }
                 onComplete();
                 return;

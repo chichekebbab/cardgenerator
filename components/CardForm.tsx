@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { CardData, CardType, CardLayout } from '../types';
 import { generateCardArt } from '../services/geminiService';
 import { removeBackground, removeBackgroundFromUrl } from '../services/removeBgService';
+import { useNotification } from './NotificationContext';
 
 interface CardFormProps {
   cardData: CardData;
@@ -23,6 +24,7 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
   const [isGenerating, setIsGenerating] = useState(false);
   const [isRemovingBg, setIsRemovingBg] = useState(false); // New: background removal state
   const [error, setError] = useState<string | null>(null);
+  const { showNotification } = useNotification();
 
   const handleChange = (field: keyof CardData, value: string | number | boolean | CardLayout) => {
     onChange({ ...cardData, [field]: value });
@@ -111,13 +113,41 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
       await onSave(updatedCard);
 
       console.log("[BG REMOVAL] Save completed successfully");
-      alert("Arrière-plan supprimé et carte sauvegardée avec succès !");
+      showNotification("Arrière-plan supprimé et carte sauvegardée avec succès !", 'success');
     } catch (err: any) {
       console.error("[BG REMOVAL] Error:", err);
       setError(err.message || "Erreur lors de la suppression de l'arrière-plan.");
     } finally {
       setIsRemovingBg(false);
     }
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check file size (optional but recommended, e.g., 5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
+      setError("L'image est trop lourde (max 5Mo).");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = reader.result as string;
+      const base64 = result.split(',')[1];
+
+      onChange({
+        ...cardData,
+        imageData: base64,
+        storedImageUrl: undefined,
+        imagePrompt: `Image importée: ${file.name}`
+      });
+    };
+    reader.onerror = () => {
+      setError("Erreur lors de la lecture du fichier.");
+    };
+    reader.readAsDataURL(file);
   };
 
   return (
@@ -380,6 +410,24 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
           <p className="text-[10px] text-gray-500 mt-2 italic">
             * Le style artistique "Munchkin/John Kovalic" est appliqué automatiquement.
           </p>
+
+          <div className="mt-3">
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              id="image-upload"
+              onChange={handleImageUpload}
+              disabled={isGenerating || isRemovingBg}
+            />
+            <label
+              htmlFor="image-upload"
+              className={`w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition-colors cursor-pointer shadow-sm flex items-center justify-center gap-2 ${(isGenerating || isRemovingBg) ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              <span>🖼️</span>
+              Importer une image
+            </label>
+          </div>
 
           {/* Background Removal Button - Show if image exists */}
           {(cardData.imageData || cardData.storedImageUrl) && (

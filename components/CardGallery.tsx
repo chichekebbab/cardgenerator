@@ -66,7 +66,7 @@ const CardGallery: React.FC<CardGalleryProps> = ({
   const [filterBase, setFilterBase] = useState<'all' | 'oui' | 'non'>('all');
   const [filterValidated, setFilterValidated] = useState<'all' | 'oui' | 'non'>('all');
   const [filterImage, setFilterImage] = useState<'all' | 'avec' | 'sans'>('all');
-  const [isExportingAll, setIsExportingAll] = useState(false);
+  const [isExportingSelection, setIsExportingSelection] = useState(false);
   const [exportProgress, setExportProgress] = useState({ current: 0, total: 0 });
 
   // Filter cards based on search query and filters
@@ -257,24 +257,24 @@ const CardGallery: React.FC<CardGalleryProps> = ({
             )}
           </div>
 
-          {/* New Card Button */}
+          {/* Export Button */}
           {filteredCards.length > 0 && (
             <button
               onClick={() => {
                 setExportProgress({ current: 0, total: filteredCards.length });
-                setIsExportingAll(true);
+                setIsExportingSelection(true);
               }}
-              disabled={isExportingAll}
+              disabled={isExportingSelection}
               className="hidden sm:flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg shadow-md transition-colors whitespace-nowrap"
             >
-              {isExportingAll ? (
+              {isExportingSelection ? (
                 <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />
               ) : (
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
               )}
-              <span>Exporter ({filteredCards.length})</span>
+              <span>Exporter la sélection ({filteredCards.length})</span>
             </button>
           )}
           <button
@@ -498,7 +498,7 @@ const CardGallery: React.FC<CardGalleryProps> = ({
       }
 
       {/* Batch Export Renderer and Overlay */}
-      {isExportingAll && (
+      {isExportingSelection && (
         <>
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
             <div className="bg-white rounded-xl p-8 shadow-2xl max-w-sm w-full text-center">
@@ -519,7 +519,7 @@ const CardGallery: React.FC<CardGalleryProps> = ({
 
           <BatchExportRenderer
             cards={filteredCards}
-            onComplete={() => setIsExportingAll(false)}
+            onComplete={() => setIsExportingSelection(false)}
             onProgress={(current, total) => setExportProgress({ current, total })}
           />
         </>
