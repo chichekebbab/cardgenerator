@@ -215,6 +215,7 @@ const App: React.FC = () => {
     localStorage.setItem("removebg_api_key", removeBgApiKey);
     setShowSettings(false);
     loadSavedCards(scriptUrl);
+    showNotification("Paramètres enregistrés !", 'success');
   };
 
   const handleSaveCard = async (cardToSave?: CardData | any) => {
@@ -543,32 +544,35 @@ const App: React.FC = () => {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm mb-2 text-amber-100 font-bold">URL de l'application Web (Google Apps Script)</label>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={scriptUrl}
-                        onChange={(e) => setScriptUrl(e.target.value)}
-                        placeholder="https://script.google.com/macros/s/..."
-                        className="flex-grow p-3 rounded bg-stone-900 border border-stone-600 text-amber-100 text-sm font-mono focus:border-amber-500 outline-none"
-                      />
-                      <button onClick={handleScriptUrlSave} className="bg-amber-600 px-6 py-2 rounded font-bold hover:bg-amber-500 text-white shadow-lg">
-                        Sauvegarder
-                      </button>
-                    </div>
+                    <input
+                      type="text"
+                      value={scriptUrl}
+                      onChange={(e) => setScriptUrl(e.target.value)}
+                      placeholder="https://script.google.com/macros/s/..."
+                      className="w-full p-3 rounded bg-stone-900 border border-stone-600 text-amber-100 text-sm font-mono focus:border-amber-500 outline-none"
+                    />
                   </div>
 
                   <div>
                     <label className="block text-sm mb-2 text-amber-100 font-bold">Clé API remove.bg (suppression d'arrière-plan)</label>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={removeBgApiKey}
-                        onChange={(e) => setRemoveBgApiKey(e.target.value)}
-                        placeholder="Votre clé API remove.bg"
-                        className="flex-grow p-3 rounded bg-stone-900 border border-stone-600 text-amber-100 text-sm font-mono focus:border-amber-500 outline-none"
-                      />
-                    </div>
+                    <input
+                      type="text"
+                      value={removeBgApiKey}
+                      onChange={(e) => {
+                        const newVal = e.target.value;
+                        setRemoveBgApiKey(newVal);
+                        localStorage.setItem("removebg_api_key", newVal);
+                      }}
+                      placeholder="Votre clé API remove.bg"
+                      className="w-full p-3 rounded bg-stone-900 border border-stone-600 text-amber-100 text-sm font-mono focus:border-amber-500 outline-none"
+                    />
                     <p className="text-xs text-amber-100/60 mt-1">Obtenez votre clé API sur <a href="https://www.remove.bg/api" target="_blank" className="underline hover:text-amber-200">remove.bg/api</a></p>
+                  </div>
+
+                  <div className="flex justify-end pt-2">
+                    <button onClick={handleScriptUrlSave} className="bg-amber-600 px-8 py-2.5 rounded font-bold hover:bg-amber-500 text-white shadow-lg transition-all active:scale-95">
+                      Sauvegarder les paramètres
+                    </button>
                   </div>
 
                   {configError && (
