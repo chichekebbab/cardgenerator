@@ -57,3 +57,51 @@ export const getExportFilename = (card: CardData, index?: number): string => {
     // Format final : CATEGORIE_TYPE-DE-CARTE_NUMERO-DE-LA-CARTE_NOM
     return `${category}_${cardType}_${cardNumber}_${cleanTitle}.png`;
 };
+
+/**
+ * Formate un bonus pour l'affichage
+ * - Si positif : ajoute un "+" devant (ex: 5 -> "+5")
+ * - Si négatif : laisse tel quel (ex: -5 -> "-5")
+ * - Si vide ou 0 : retourne une chaîne vide
+ * - Supporte les valeurs multiples avec "/" (ex: "4/5" -> "+4/5", "-2/3" -> "-2/+3")
+ */
+export const formatBonus = (bonus: string | number): string => {
+    if (bonus === '' || bonus === 0) return '';
+
+    const bonusStr = String(bonus);
+
+    // Gérer les valeurs avec "/" (ex: "4/5" -> "+4/5")
+    if (bonusStr.includes('/')) {
+        const parts = bonusStr.split('/');
+        const formattedParts = parts.map(part => {
+            const trimmedPart = part.trim();
+            if (trimmedPart === '') return '';
+
+            const numPart = parseFloat(trimmedPart);
+            if (isNaN(numPart)) return trimmedPart;
+
+            // Si positif, ajouter le "+"
+            if (numPart > 0) {
+                return `+${numPart}`;
+            }
+
+            // Si négatif, le signe "-" est déjà présent
+            return String(numPart);
+        });
+
+        return formattedParts.join('/');
+    }
+
+    // Cas simple : valeur unique
+    const numBonus = parseFloat(bonusStr);
+
+    if (isNaN(numBonus)) return '';
+
+    // Si positif, ajouter le "+"
+    if (numBonus > 0) {
+        return `+${numBonus}`;
+    }
+
+    // Si négatif, le signe "-" est déjà présent
+    return String(numBonus);
+};

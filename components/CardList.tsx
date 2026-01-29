@@ -32,7 +32,7 @@ const COLUMNS: { key: keyof CardData; label: string; type: 'string' | 'number' |
     { key: 'title', label: 'Titre', type: 'string', width: '180px' },
     { key: 'type', label: 'Type', type: 'enum', width: '130px' },
     { key: 'level', label: 'Niveau', type: 'number', width: '80px' },
-    { key: 'bonus', label: 'Bonus', type: 'number', width: '80px' },
+    { key: 'bonus', label: 'Bonus', type: 'string', width: '80px' },
     { key: 'description', label: 'Description', type: 'string', width: '200px' },
     { key: 'badStuff', label: 'Bad Stuff', type: 'string', width: '150px' },
     { key: 'gold', label: 'Trésors', type: 'string', width: '100px' },
@@ -570,10 +570,10 @@ const CardList: React.FC<CardListProps> = ({ cards, onSelectCard, onUpdateCard, 
                                                     key={`${card.id}-${column.key}`}
                                                     onClick={(e) => handleCellClick(e, card, column)}
                                                     className={`px-3 py-2.5 max-w-[200px] ${column.key === 'title'
-                                                            ? 'cursor-pointer'
-                                                            : onUpdateCard
-                                                                ? 'cursor-text hover:bg-amber-100/50'
-                                                                : ''
+                                                        ? 'cursor-pointer'
+                                                        : onUpdateCard
+                                                            ? 'cursor-text hover:bg-amber-100/50'
+                                                            : ''
                                                         }`}
                                                 >
                                                     {renderCellValue(card, column)}

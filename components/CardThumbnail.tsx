@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CardData, CardType } from '../types';
+import { formatBonus } from '../utils/layoutUtils';
 
 interface CardThumbnailProps {
   card: CardData;
@@ -143,8 +144,8 @@ const CardThumbnail: React.FC<CardThumbnailProps> = ({ card, onClick, isSelected
         </div>
       )}
       {(card.type === CardType.ITEM || card.type === CardType.FAITHFUL_SERVANT || card.type === CardType.LEVEL_UP) && card.bonus !== '' && (
-        <div className="absolute top-2 left-2 bg-amber-700 text-white text-xs font-bold w-8 h-8 rounded-full flex items-center justify-center shadow-sm">
-          +{card.bonus}
+        <div className="absolute top-2 left-2 bg-amber-700 text-white text-[10px] font-bold min-w-[2rem] h-8 px-1 rounded-full flex items-center justify-center shadow-sm">
+          {formatBonus(card.bonus)}
         </div>
       )}
 

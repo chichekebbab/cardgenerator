@@ -13,6 +13,7 @@ interface CardFormProps {
   onDelete: () => void;
   isSaving: boolean;
   hasScriptUrl: boolean;
+  hasUnsavedChanges: boolean; // New: track if card has unsaved changes
   onImport: () => void;
 
   removeBgApiKey?: string; // remove.bg API key
@@ -22,7 +23,7 @@ interface CardFormProps {
 // Pré-prompt technique imposé (ne change jamais)
 const FIXED_PRE_PROMPT = "Génère une illustration au format carré (1x1). Le style artistique doit imiter parfaitement celui du jeu de cartes 'Munchkin' et du dessinateur John Kovalic : un style cartoon satirique, dessiné à la main, avec des contours noirs épais et une ambiance humoristique de fantasy. L'image doit présenter un seul élément isolé, centré. Il ne doit y avoir absolument aucun texte sur l'image. Le fond doit être une couleur unie, neutre et simple, sans aucun décor ni détail. Voici l'élément à générer :";
 
-const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, onDuplicate, onDelete, isSaving, hasScriptUrl, onImport, removeBgApiKey, geminiApiKey }) => {
+const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, onDuplicate, onDelete, isSaving, hasScriptUrl, hasUnsavedChanges, onImport, removeBgApiKey, geminiApiKey }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isRemovingBg, setIsRemovingBg] = useState(false); // New: background removal state
   const [error, setError] = useState<string | null>(null);
@@ -191,17 +192,25 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
             </button>
             <button
               onClick={onSave}
-              disabled={isSaving}
-              className="h-[34px] px-3 text-sm font-bold text-white bg-green-600 hover:bg-green-700 rounded shadow transition-colors disabled:opacity-50 flex items-center gap-1.5 whitespace-nowrap"
+              disabled={isSaving || !hasUnsavedChanges}
+              className={`h-[34px] px-3 text-sm font-bold rounded shadow transition-all flex items-center gap-1.5 whitespace-nowrap ${hasUnsavedChanges
+                ? 'text-white bg-green-600 hover:bg-green-700 cursor-pointer'
+                : 'text-green-800 bg-green-100 cursor-not-allowed opacity-75'
+                } ${isSaving ? 'opacity-50' : ''}`}
+              title={hasUnsavedChanges ? 'Enregistrer les modifications' : 'Carte sauvegardée'}
             >
               {isSaving ? (
                 <>
                   <span className="animate-spin text-xs">⏳</span>
                   ...
                 </>
-              ) : (
+              ) : hasUnsavedChanges ? (
                 <>
                   <span>💾</span> Sauvegarder
+                </>
+              ) : (
+                <>
+                  <span>✓</span> Sauvegardée
                 </>
               )}
             </button>
@@ -269,9 +278,9 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Bonus</label>
               <input
-                type="number"
+                type="text"
                 value={cardData.bonus}
-                onChange={(e) => handleChange('bonus', parseInt(e.target.value) || '')}
+                onChange={(e) => handleChange('bonus', e.target.value)}
                 className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
               />
             </div>

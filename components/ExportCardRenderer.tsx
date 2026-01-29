@@ -1,5 +1,6 @@
 import React, { forwardRef } from 'react';
 import { CardData, CardType } from '../types';
+import { formatBonus } from '../utils/layoutUtils';
 
 interface ExportCardRendererProps {
     data: CardData;
@@ -24,7 +25,7 @@ const ExportCardRenderer = forwardRef<HTMLDivElement, ExportCardRendererProps>((
             case CardType.DUNGEON_TRAP:
             case CardType.DUNGEON_BONUS:
             case CardType.TREASURE_TRAP:
-                return { value: data.bonus !== '' ? `+${data.bonus}` : '' };
+                return { value: formatBonus(data.bonus) };
             default:
                 return { value: '' };
         }

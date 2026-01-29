@@ -21,7 +21,7 @@ export interface CardData {
   type: CardType;
   layout: CardLayout; // Nouveau champ pour le style
   level: number | '';
-  bonus: number | '';
+  bonus: number | string;
   description: string;
   badStuff: string;
   gold: string;

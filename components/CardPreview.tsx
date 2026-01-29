@@ -3,7 +3,7 @@ import { CardData, CardType } from '../types';
 import { toPng } from 'html-to-image';
 import ExportCardRenderer from './ExportCardRenderer';
 import { useNotification } from './NotificationContext';
-import { getExportFilename } from '../utils/layoutUtils';
+import { getExportFilename, formatBonus } from '../utils/layoutUtils';
 
 interface CardPreviewProps {
     data: CardData;
@@ -254,7 +254,7 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data, index }) => {
                 return {
                     style: baseStyle,
                     label: 'BONUS',
-                    value: data.bonus !== '' ? `+${data.bonus}` : '',
+                    value: formatBonus(data.bonus),
                     textColor: 'text-white'
                 };
             case CardType.CURSE:
@@ -265,14 +265,14 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data, index }) => {
                 return {
                     style: baseStyle,
                     label: 'BONUS',
-                    value: data.bonus !== '' ? `+${data.bonus}` : '',
+                    value: formatBonus(data.bonus),
                     textColor: 'text-white'
                 };
             case CardType.FAITHFUL_SERVANT:
                 return {
                     style: baseStyle,
                     label: 'BONUS',
-                    value: data.bonus !== '' ? `+${data.bonus}` : '',
+                    value: formatBonus(data.bonus),
                     textColor: 'text-white'
                 };
             case CardType.DUNGEON_TRAP:
@@ -281,7 +281,7 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data, index }) => {
                 return {
                     style: baseStyle,
                     label: 'BONUS',
-                    value: data.bonus !== '' ? `+${data.bonus}` : '',
+                    value: formatBonus(data.bonus),
                     textColor: 'text-white'
                 };
             default:

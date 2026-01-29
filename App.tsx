@@ -178,6 +178,7 @@ const App: React.FC = () => {
   const [configError, setConfigError] = useState<string | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
   const [listSaveStatus, setListSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false); // Track if current card has changes
   const { showNotification } = useNotification();
 
   // Charger l'URL du script et la clé API depuis le localStorage
@@ -269,6 +270,9 @@ const App: React.FC = () => {
         }
       }
 
+      // Mark card as saved (no unsaved changes)
+      setHasUnsavedChanges(false);
+
       // Only show alert if NOT called from background removal (to avoid double alerts)
       if (!calledFromBackgroundRemoval) {
         showNotification("Carte sauvegardée avec succès !", 'success');
@@ -276,10 +280,30 @@ const App: React.FC = () => {
 
       console.log("[SAVE] Scheduling cards list refresh in 2 seconds...");
       // Delay the list refresh by 2 seconds to give Google Sheets time to fully update
-      // This prevents loading stale data that would overwrite our current card
-      setTimeout(() => {
+      // Store the current card ID to check later if we should update cardData
+      const savedCardId = dataToSave.id;
+
+      setTimeout(async () => {
         console.log("[SAVE] Refreshing cards list...");
-        loadSavedCards(scriptUrl);
+        await loadSavedCards(scriptUrl);
+
+        // After reloading, update cardData only if the user is still editing the same card
+        // This prevents unwanted navigation when user has moved to a different card/view
+        console.log("[SAVE] Checking if we should sync card data. Current card ID:", cardData.id, "Saved card ID:", savedCardId);
+
+        // Use a callback to access the most recent cardData value
+        setCardData(currentCardData => {
+          if (currentCardData.id === savedCardId) {
+            console.log("[SAVE] User still on same card, updating silently from savedCards");
+            // Find the updated card in savedCards using a ref callback won't work here
+            // We need to use setSavedCards callback or find another way
+            // For now, we don't update cardData here - it was already updated above after save
+            console.log("[SAVE] Card data already up-to-date from save response");
+          } else {
+            console.log("[SAVE] User has navigated away, not updating cardData");
+          }
+          return currentCardData; // No change needed, already updated above
+        });
       }, 2000);
     } catch (e: any) {
       console.error("[SAVE] Save error:", e);
@@ -331,6 +355,7 @@ const App: React.FC = () => {
   const handleNewCard = () => {
     setCardData({ ...INITIAL_CARD_DATA, id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString() });
     setActiveView('editor'); // Switch to editor when creating new card
+    setHasUnsavedChanges(false); // New card has no changes yet
   };
 
   const handleImportCards = async (cards: CardData[]) => {
@@ -379,11 +404,16 @@ const App: React.FC = () => {
     }
   };
 
-  const handleSelectCard = (card: CardData) => {
+  const handleSelectCard = (card: CardData, skipViewChange?: boolean) => {
     setCardData(card);
-    setActiveView('editor'); // Switch to editor when selecting a card
-    // Scroll to top on mobile
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (!skipViewChange) {
+      setActiveView('editor'); // Switch to editor when selecting a card
+    }
+    setHasUnsavedChanges(false); // Loading a saved card, no changes yet
+    // Scroll to top on mobile (only if we're switching views)
+    if (!skipViewChange) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   // Get cards of the same type as the current card, sorted by creation date
@@ -409,8 +439,57 @@ const App: React.FC = () => {
     }
 
     setCardData(sameTypeCards[newIndex]);
+    setHasUnsavedChanges(false); // Loading a saved card, no changes yet
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  // Detect changes to cardData to mark as having unsaved changes
+  useEffect(() => {
+    // Find the saved version of this card
+    const savedVersion = savedCards.find(c => c.id === cardData.id);
+
+    // If card doesn't exist in saved cards yet (new card), check if it has any content
+    if (!savedVersion) {
+      // For new cards, mark as having changes if any field differs from initial state
+      const hasContent =
+        cardData.title !== INITIAL_CARD_DATA.title ||
+        cardData.description !== INITIAL_CARD_DATA.description ||
+        cardData.imageData !== null ||
+        cardData.storedImageUrl !== undefined ||
+        cardData.imagePrompt !== INITIAL_CARD_DATA.imagePrompt ||
+        cardData.internalComment !== INITIAL_CARD_DATA.internalComment;
+
+      setHasUnsavedChanges(hasContent);
+      return;
+    }
+
+    // Compare the current card with the saved version
+    // We need to compare all important fields
+    const hasChanges =
+      savedVersion.title !== cardData.title ||
+      savedVersion.type !== cardData.type ||
+      savedVersion.level !== cardData.level ||
+      savedVersion.bonus !== cardData.bonus ||
+      savedVersion.gold !== cardData.gold ||
+      savedVersion.description !== cardData.description ||
+      savedVersion.badStuff !== cardData.badStuff ||
+      savedVersion.restrictions !== cardData.restrictions ||
+      savedVersion.itemSlot !== cardData.itemSlot ||
+      savedVersion.isBig !== cardData.isBig ||
+      savedVersion.levelsGained !== cardData.levelsGained ||
+      savedVersion.isBaseCard !== cardData.isBaseCard ||
+      savedVersion.isValidated !== cardData.isValidated ||
+      savedVersion.imagePrompt !== cardData.imagePrompt ||
+      savedVersion.imageScale !== cardData.imageScale ||
+      savedVersion.imageOffsetX !== cardData.imageOffsetX ||
+      savedVersion.imageOffsetY !== cardData.imageOffsetY ||
+      savedVersion.descriptionBoxScale !== cardData.descriptionBoxScale ||
+      savedVersion.internalComment !== cardData.internalComment ||
+      // Check if image has changed (new imageData without matching storedImageUrl)
+      (cardData.imageData && !cardData.storedImageUrl);
+
+    setHasUnsavedChanges(hasChanges);
+  }, [cardData, savedCards]);
 
   // Keyboard navigation support (arrow keys)
   useEffect(() => {
@@ -769,7 +848,7 @@ const App: React.FC = () => {
                   onImport={() => setShowImportModal(true)}
                   isSaving={isSaving}
                   hasScriptUrl={!!scriptUrl}
-
+                  hasUnsavedChanges={hasUnsavedChanges}
                   removeBgApiKey={removeBgApiKey}
                   geminiApiKey={geminiApiKey}
                 />
