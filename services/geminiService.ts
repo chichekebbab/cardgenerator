@@ -119,18 +119,20 @@ export const generateCardSuggestion = async (concept: string, apiKey?: string): 
       {
         "title": "Nom de la carte",
         "type": "Valeur parmi les types listés",
-        "level": number (si Monstre, sinon 0),
+        "level": number (si Monstre, entre 1 et 20, varie souvent),
         "bonus": string (ex: "+3" ou "+2 contre les Elfes" ou "1"),
         "description": "Texte d'effet principal",
         "badStuff": "Incident Fâcheux (si Monstre, vide sinon)",
-        "gold": "Valeur (ex: '300 Pièces d'Or' ou '2 Trésors')",
+        "gold": "Valeur (ex: '300 Pièces d'Or' ou '2 Trésors', le nombre de trésors varie entre 1 et 5)",
         "imagePrompt": "Description visuelle détaillée pour le dessinateur (style John Kovalic), centrée sur un élément unique, sans décor complexe.",
-        "levelsGained": number (si Monstre, sinon 0),
+        "levelsGained": number (si Monstre, généralement 1, parfois 2 pour les gros monstres),
         "itemSlot": "Usage Unique" | "1 Main" | "2 Mains" | "Armure" | "Couvre-chef" | "Chaussures" | "NoSlot" | "Monture" (si Objet),
         "restrictions": "Restrictions d'usage (ex: Elfes uniquement)",
         "isBig": boolean (si Objet)
       }
 
+      IMPORTANT: Varie les niveaux des monstres (ne donne pas toujours la même valeur) et les récompenses.
+      IMPORTANT: Ne génère JAMAIS de champ "id" ou "uuid". L'identifiant est géré par le système.
       Réponds uniquement avec le JSON.
     `;
 

@@ -163,26 +163,39 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
       const suggestion = await generateCardSuggestion(suggestionInput, geminiApiKey);
       console.log("[CARD FORM] Received suggestion:", suggestion);
 
+      // On s'assure que la suggestion ne contient pas d'ID qui pourrait écraser l'actuel
+      // ou entrer en conflit avec une autre carte.
+      const cleanSuggestion = { ...suggestion };
+      delete (cleanSuggestion as any).id;
+      delete (cleanSuggestion as any).uuid;
+
+      // On génère un nouvel ID pour que la proposition soit considérée comme une NOUVELLE carte
+      // et n'écrase pas l'ancienne carte si on était en train d'en éditer une.
+      const newId = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString();
+
       // On fusionne et on nettoie selon le type pour éviter les données incohérentes
       const updatedCard: CardData = {
         ...cardData,
-        ...suggestion,
+        ...cleanSuggestion,
+        id: newId,
         // Fallback pour les champs obligatoires ou numériques
-        level: suggestion.type === CardType.MONSTER ? (suggestion.level || 1) : '',
-        levelsGained: suggestion.type === CardType.MONSTER ? (suggestion.levelsGained || 1) : '',
-        badStuff: suggestion.type === CardType.MONSTER ? (suggestion.badStuff || '') : '',
-        bonus: (suggestion.type === CardType.ITEM || suggestion.type === CardType.LEVEL_UP || suggestion.type === CardType.FAITHFUL_SERVANT || suggestion.type === CardType.DUNGEON_TRAP || suggestion.type === CardType.DUNGEON_BONUS || suggestion.type === CardType.TREASURE_TRAP)
-          ? (suggestion.bonus || '')
+        level: cleanSuggestion.type === CardType.MONSTER ? (cleanSuggestion.level || 1) : '',
+        levelsGained: cleanSuggestion.type === CardType.MONSTER ? (cleanSuggestion.levelsGained || 1) : '',
+        badStuff: cleanSuggestion.type === CardType.MONSTER ? (cleanSuggestion.badStuff || '') : '',
+        bonus: (cleanSuggestion.type === CardType.ITEM || cleanSuggestion.type === CardType.LEVEL_UP || cleanSuggestion.type === CardType.FAITHFUL_SERVANT || cleanSuggestion.type === CardType.DUNGEON_TRAP || cleanSuggestion.type === CardType.DUNGEON_BONUS || cleanSuggestion.type === CardType.TREASURE_TRAP)
+          ? (cleanSuggestion.bonus || '')
           : '',
-        gold: suggestion.gold || '',
-        itemSlot: suggestion.type === CardType.ITEM ? (suggestion.itemSlot || '') : '',
-        isBig: suggestion.type === CardType.ITEM ? (!!suggestion.isBig) : false,
-        restrictions: suggestion.restrictions || '',
-        imagePrompt: suggestion.imagePrompt || '',
+        gold: cleanSuggestion.gold || '',
+        itemSlot: cleanSuggestion.type === CardType.ITEM ? (cleanSuggestion.itemSlot || '') : '',
+        isBig: cleanSuggestion.type === CardType.ITEM ? (!!cleanSuggestion.isBig) : false,
+        restrictions: cleanSuggestion.restrictions || '',
+        imagePrompt: cleanSuggestion.imagePrompt || '',
+        imageData: null, // Reset image for new suggestion
+        storedImageUrl: undefined, // Reset stored image
         internalComment: '',
       };
 
-      console.log("[CARD FORM] Updating card with:", updatedCard);
+      console.log("[CARD FORM] Updating card with new ID:", updatedCard.id);
       onChange(updatedCard);
 
       showNotification("Proposition générée ! Ajustez si besoin.", 'success');
