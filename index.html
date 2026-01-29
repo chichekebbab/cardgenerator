@@ -7,67 +7,8 @@
   <title>Générateur de Cartes Munchkin</title>
   <link rel="icon" type="image/png" href="/favicon.png" />
   <link rel="apple-touch-icon" href="/favicon.png" />
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Quicksand:wght@300;400;500;700&family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&family=IM+Fell+DW+Pica&family=MedievalSharp&family=Metamorphous&display=swap');
-    @import url('https://fonts.googleapis.com/css2?family=Rye&display=swap');
 
-    body {
-      font-family: 'Quicksand', sans-serif;
-    }
 
-    h1,
-    h2,
-    h3 {
-      font-family: 'Cinzel', serif;
-    }
-
-    .bg-wood-pattern {
-      background-color: #1a1510;
-      background-image: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.03) 0px, rgba(255, 255, 255, 0.03) 2px, transparent 2px, transparent 4px);
-    }
-
-    /* Corps de la carte (Utilisé comme Fallback ou pour Type 2) */
-    .bg-parchment-body {
-      background-color: #e8dcc5;
-      /* Le watermark floral subtil */
-      background-image: url("data:image/svg+xml,%3Csvg width='200' height='200' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30,50 Q50,0 70,50 T30,50' fill='none' stroke='%238B4513' stroke-width='2' opacity='0.05'/%3E%3Cpath d='M10,80 Q30,60 50,80 T90,80' fill='none' stroke='%238B4513' stroke-width='2' opacity='0.05'/%3E%3Ccircle cx='20' cy='20' r='10' fill='none' stroke='%238B4513' stroke-width='1' opacity='0.05'/%3E%3Cpath d='M50,50 C20,20 80,20 50,50' fill='none' stroke='%238B4513' stroke-width='4' opacity='0.03'/%3E%3C/svg%3E");
-      background-size: 100% 100%;
-      box-shadow: inset 0 0 80px rgba(80, 50, 30, 0.5);
-    }
-
-    /* Losanges style Munchkin (Bois vernis / Métal) */
-    .diamond-style {
-      background: radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0) 25%),
-        linear-gradient(135deg, #a1887f 0%, #5d4037 50%, #3e2723 100%);
-      border: 2px solid #d7ccc8;
-      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.6);
-    }
-
-    .text-shadow-sm {
-      text-shadow: 1px 1px 0px rgba(255, 255, 255, 0.4);
-    }
-
-    .text-shadow-strong {
-      text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.5);
-    }
-  </style>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: {
-            'munchkin-title': ['"Windlass"', '"IM Fell English SC"', '"Rye"', '"Metamorphous"', 'cursive'],
-            'munchkin-body': ['"Caslon Antique"', '"IM Fell DW Pica"', '"IM Fell English"', 'serif'],
-            'medieval': ['"MedievalSharp"', 'cursive'],
-          },
-          boxShadow: {
-            'card': '0 0 0 1px rgba(0,0,0,0.5), 0 20px 40px -5px rgba(0,0,0,0.6)',
-          }
-        }
-      }
-    }
-  </script>
   <script type="importmap">
 {
   "imports": {
@@ -79,7 +20,7 @@
   }
 }
 </script>
-  <link rel="stylesheet" href="/index.css">
+
 </head>
 
 <body>

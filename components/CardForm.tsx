@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { CardData, CardType, CardLayout } from '../types';
-import { generateCardArt } from '../services/geminiService';
+import { generateCardArt, generateCardSuggestion } from '../services/geminiService';
 import { removeBackground, removeBackgroundFromUrl, hasDefaultRemoveBgKey } from '../services/removeBgService';
 import { useNotification } from './NotificationContext';
 
@@ -25,6 +25,8 @@ const FIXED_PRE_PROMPT = "Génère une illustration au format carré (1x1). Le s
 
 const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, onDuplicate, onDelete, isSaving, hasScriptUrl, hasUnsavedChanges, onImport, removeBgApiKey, geminiApiKey }) => {
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSuggesting, setIsSuggesting] = useState(false); // New: suggestion state
+  const [suggestionInput, setSuggestionInput] = useState(""); // New: suggestion input
   const [isRemovingBg, setIsRemovingBg] = useState(false); // New: background removal state
   const [error, setError] = useState<string | null>(null);
   const { showNotification } = useNotification();
@@ -153,6 +155,45 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
     reader.readAsDataURL(file);
   };
 
+  const handleSuggestCard = async () => {
+    setIsSuggesting(true);
+    setError(null);
+    try {
+      console.log("[CARD FORM] Requesting suggestion for:", suggestionInput);
+      const suggestion = await generateCardSuggestion(suggestionInput, geminiApiKey);
+      console.log("[CARD FORM] Received suggestion:", suggestion);
+
+      // On fusionne et on nettoie selon le type pour éviter les données incohérentes
+      const updatedCard: CardData = {
+        ...cardData,
+        ...suggestion,
+        // Fallback pour les champs obligatoires ou numériques
+        level: suggestion.type === CardType.MONSTER ? (suggestion.level || 1) : '',
+        levelsGained: suggestion.type === CardType.MONSTER ? (suggestion.levelsGained || 1) : '',
+        badStuff: suggestion.type === CardType.MONSTER ? (suggestion.badStuff || '') : '',
+        bonus: (suggestion.type === CardType.ITEM || suggestion.type === CardType.LEVEL_UP || suggestion.type === CardType.FAITHFUL_SERVANT || suggestion.type === CardType.DUNGEON_TRAP || suggestion.type === CardType.DUNGEON_BONUS || suggestion.type === CardType.TREASURE_TRAP)
+          ? (suggestion.bonus || '')
+          : '',
+        gold: suggestion.gold || '',
+        itemSlot: suggestion.type === CardType.ITEM ? (suggestion.itemSlot || '') : '',
+        isBig: suggestion.type === CardType.ITEM ? (!!suggestion.isBig) : false,
+        restrictions: suggestion.restrictions || '',
+        imagePrompt: suggestion.imagePrompt || '',
+        internalComment: '',
+      };
+
+      console.log("[CARD FORM] Updating card with:", updatedCard);
+      onChange(updatedCard);
+
+      showNotification("Proposition générée ! Ajustez si besoin.", 'success');
+    } catch (err: any) {
+      console.error("Erreur suggestion:", err);
+      setError("Erreur lors de la suggestion : " + (err.message || "Inconnue"));
+    } finally {
+      setIsSuggesting(false);
+    }
+  };
+
   return (
     <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200 h-full overflow-y-auto">
       <div className="flex items-center justify-between gap-2 mb-6 overflow-x-auto pb-1">
@@ -228,6 +269,35 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
 
 
 
+        {/* Assistant Creation (Gemini) */}
+        <div className="bg-gradient-to-r from-amber-50 to-orange-50 p-4 rounded-lg border border-amber-200 shadow-sm">
+          <label className="block text-sm font-bold text-amber-900 mb-2 flex items-center gap-2">
+            <span>✨ Assistant Création</span>
+            <span className="text-[10px] font-normal text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">Gemini 2.0 Flash</span>
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={suggestionInput}
+              onChange={(e) => setSuggestionInput(e.target.value)}
+              placeholder="Concept (ex: grille-pain maléfique)... laissez vide pour du hasard !"
+              className="flex-grow p-2 text-sm border border-amber-300 rounded focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-white"
+              onKeyDown={(e) => e.key === 'Enter' && handleSuggestCard()}
+            />
+            <button
+              onClick={handleSuggestCard}
+              disabled={isSuggesting}
+              className="bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 px-4 rounded transition-colors disabled:opacity-50 whitespace-nowrap shadow-sm text-sm"
+              title={suggestionInput ? "Générer une carte basée sur ce concept" : "Générer une carte totalement aléatoire"}
+            >
+              {isSuggesting ? 'Réflexion...' : 'Suggérer'}
+            </button>
+          </div>
+          <p className="text-[10px] text-amber-700/70 mt-1 italic">
+            Remplit automatiquement les champs (titre, stats, description...) et propose un prompt pour l'image.
+          </p>
+        </div>
+
         {/* Basic Info */}
         <div className="grid grid-cols-2 gap-4">
           <div>
@@ -254,7 +324,7 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
             <label className="block text-sm font-medium text-gray-700 mb-1">Titre</label>
             <input
               type="text"
-              value={cardData.title}
+              value={cardData.title || ''}
               onChange={(e) => handleChange('title', e.target.value)}
               className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
             />
@@ -268,7 +338,7 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
               <label className="block text-sm font-medium text-gray-700 mb-1">Niveau</label>
               <input
                 type="number"
-                value={cardData.level}
+                value={cardData.level || ''}
                 onChange={(e) => handleChange('level', parseInt(e.target.value) || '')}
                 className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
               />
@@ -279,7 +349,7 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
               <label className="block text-sm font-medium text-gray-700 mb-1">Bonus</label>
               <input
                 type="text"
-                value={cardData.bonus}
+                value={cardData.bonus || ''}
                 onChange={(e) => handleChange('bonus', e.target.value)}
                 className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
               />
@@ -290,7 +360,7 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
               <label className="block text-sm font-medium text-gray-700 mb-1">Val/Trésors</label>
               <input
                 type="text"
-                value={cardData.gold}
+                value={cardData.gold || ''}
                 onChange={(e) => handleChange('gold', e.target.value)}
                 className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
                 placeholder={cardData.type === CardType.MONSTER ? "ex: 2 Trésors" : "ex: 500 Pièces d'Or"}
@@ -309,7 +379,7 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
                 <input
                   type="number"
                   min="1"
-                  value={cardData.levelsGained}
+                  value={cardData.levelsGained || ''}
                   onChange={(e) => handleChange('levelsGained', parseInt(e.target.value) || '')}
                   className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-green-500"
                   placeholder="1"
@@ -327,7 +397,7 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Emplacement</label>
                 <select
-                  value={cardData.itemSlot}
+                  value={cardData.itemSlot || ''}
                   onChange={(e) => handleChange('itemSlot', e.target.value)}
                   className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-amber-500"
                 >
@@ -363,7 +433,7 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
             <label className="block text-sm font-medium text-gray-700 mb-1">Restrictions / Utilisable par</label>
             <input
               type="text"
-              value={cardData.restrictions}
+              value={cardData.restrictions || ''}
               onChange={(e) => handleChange('restrictions', e.target.value)}
               placeholder="ex: Utilisable par l'Elfe uniquement"
               className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
@@ -404,7 +474,7 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
           <div className="flex gap-2">
             <input
               type="text"
-              value={cardData.imagePrompt}
+              value={cardData.imagePrompt || ''}
               onChange={(e) => handleChange('imagePrompt', e.target.value)}
               placeholder="Décrivez le monstre/objet..."
               className="flex-grow p-2 border border-gray-300 rounded focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
@@ -548,7 +618,7 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
           <textarea
-            value={cardData.description}
+            value={cardData.description || ''}
             onChange={(e) => handleChange('description', e.target.value)}
             rows={4}
             className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
@@ -559,7 +629,7 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
           <div>
             <label className="block text-sm font-medium text-red-700 mb-1">Incident Fâcheux</label>
             <textarea
-              value={cardData.badStuff}
+              value={cardData.badStuff || ''}
               onChange={(e) => handleChange('badStuff', e.target.value)}
               rows={2}
               className="w-full p-2 border border-red-200 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500 bg-red-50"

@@ -112,15 +112,11 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data, index }) => {
 
     useEffect(() => {
         const filename = getLayoutFilename();
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/189801d3-a0b6-4ecb-8ee2-4fabaa314149', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'CardPreview.tsx:64', message: 'useEffect layout - filename computed', data: { filename, cardType: data.type, baseUrl: window.location.href, pathname: window.location.pathname }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A' }) }).catch(() => { });
-        // #endregion
+
         // 1. D'abord on essaie le chemin relatif 'layouts/...' 
         // C'est le plus robuste pour les déploiements (GitHub Pages, etc.) où l'app n'est pas à la racine
         const initialPath = `layouts/${filename}`;
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/189801d3-a0b6-4ecb-8ee2-4fabaa314149', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'CardPreview.tsx:69', message: 'Setting initial layoutSrc', data: { initialPath, resolvedUrl: new URL(initialPath, window.location.href).href }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A' }) }).catch(() => { });
-        // #endregion
+
         setLayoutSrc(initialPath);
         setLayoutError(false);
         setLayoutTryCount(0);
@@ -128,36 +124,25 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data, index }) => {
 
     const handleLayoutError = (event: any) => {
         const filename = getLayoutFilename();
-        // #region agent log
-        const errorTarget = event?.target;
-        const errorSrc = errorTarget?.src || errorTarget?.currentSrc || layoutSrc;
-        const errorHref = errorTarget?.href;
-        fetch('http://127.0.0.1:7243/ingest/189801d3-a0b6-4ecb-8ee2-4fabaa314149', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'CardPreview.tsx:73', message: 'handleLayoutError called', data: { filename, layoutTryCount, currentLayoutSrc: layoutSrc, errorSrc, errorHref, baseUrl: window.location.href, computedAbsolute: new URL(layoutSrc, window.location.href).href }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'B' }) }).catch(() => { });
-        // #endregion
+
 
         if (layoutTryCount === 0) {
             // Tentative 2: Peut-être que l'utilisateur a mis les images à la racine de public/ ?
             // ou que le mapping de dossiers est différent
             console.warn(`Layout non trouvé dans layouts/, tentative à la racine: ${filename}`);
             const nextPath = filename;
-            // #region agent log
-            fetch('http://127.0.0.1:7243/ingest/189801d3-a0b6-4ecb-8ee2-4fabaa314149', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'CardPreview.tsx:80', message: 'Tentative 2 - root path', data: { nextPath, resolvedUrl: new URL(nextPath, window.location.href).href }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'C' }) }).catch(() => { });
-            // #endregion
+
             setLayoutSrc(nextPath);
             setLayoutTryCount(1);
         } else if (layoutTryCount === 1) {
             // Tentative 3: Forcer le chemin absolu /layouts/ (pour serveur local strict)
             console.warn(`Tentative chemin absolu: /layouts/${filename}`);
             const nextPath = `/layouts/${filename}`;
-            // #region agent log
-            fetch('http://127.0.0.1:7243/ingest/189801d3-a0b6-4ecb-8ee2-4fabaa314149', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'CardPreview.tsx:86', message: 'Tentative 3 - absolute path', data: { nextPath, resolvedUrl: new URL(nextPath, window.location.href).href }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'D' }) }).catch(() => { });
-            // #endregion
+
             setLayoutSrc(nextPath);
             setLayoutTryCount(2);
         } else {
-            // #region agent log
-            fetch('http://127.0.0.1:7243/ingest/189801d3-a0b6-4ecb-8ee2-4fabaa314149', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'CardPreview.tsx:89', message: 'All layout paths failed', data: { filename, pathsTested: [`layouts/${filename}`, filename, `/layouts/${filename}`], finalError: true }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'E' }) }).catch(() => { });
-            // #endregion
+
             console.error(`Erreur chargement layout définitive pour ${filename}. Chemins testés: layouts/${filename}, ${filename}, /layouts/${filename}`);
             setLayoutError(true);
         }
@@ -178,8 +163,7 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data, index }) => {
             // Utiliser html-to-image qui gère mieux les CSS transforms
             const dataUrl = await toPng(exportRef.current, {
                 quality: 1.0,
-                pixelRatio: 1,
-                cacheBust: true
+                pixelRatio: 1
             });
 
             const filename = getExportFilename(data, index);
@@ -318,19 +302,16 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data, index }) => {
 
                 {/* COUCHE 1 : Image de Fond PNG (Layout) */}
                 <div className="absolute inset-0 z-[1]">
-                    <img
-                        key={layoutSrc} // Force le re-render si la source change
-                        src={layoutSrc}
-                        alt={`Fond ${data.type}`}
-                        className="w-full h-full object-cover"
-                        crossOrigin="anonymous"
-                        onError={handleLayoutError}
-                        onLoad={() => {
-                            // #region agent log
-                            fetch('http://127.0.0.1:7243/ingest/189801d3-a0b6-4ecb-8ee2-4fabaa314149', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'CardPreview.tsx:223', message: 'Layout image loaded successfully', data: { layoutSrc, resolvedUrl: new URL(layoutSrc, window.location.href).href }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'F' }) }).catch(() => { });
-                            // #endregion
-                        }}
-                    />
+                    {layoutSrc && (
+                        <img
+                            key={layoutSrc} // Force le re-render si la source change
+                            src={layoutSrc}
+                            alt={`Fond ${data.type}`}
+                            className="w-full h-full object-cover"
+                            crossOrigin="anonymous"
+                            onError={handleLayoutError}
+                        />
+                    )}
                 </div>
 
                 {/* COUCHE 2 : CONTENU (Superposé au layout - Positionnement Absolu UNIFIÉ) */}
