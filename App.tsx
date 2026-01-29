@@ -5,6 +5,8 @@ import DeckStats from './components/DeckStats';
 import CardGallery from './components/CardGallery';
 import CardList from './components/CardList';
 import ImportModal from './components/ImportModal';
+import LegalModal from './components/LegalModal';
+import Footer from './components/Footer';
 import CardNavigation from './components/CardNavigation';
 import { CardData, INITIAL_CARD_DATA } from './types';
 import { saveCardToSheet, fetchCardsFromSheet, deleteCardFromSheet } from './services/sheetService';
@@ -177,6 +179,8 @@ const App: React.FC = () => {
   const [isLoadingList, setIsLoadingList] = useState(false);
   const [configError, setConfigError] = useState<string | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showLegalModal, setShowLegalModal] = useState(false);
+  const [legalActiveTab, setLegalActiveTab] = useState<'mentions' | 'privacy' | 'cgu'>('mentions');
   const [listSaveStatus, setListSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false); // Track if current card has changes
   const { showNotification } = useNotification();
@@ -648,54 +652,90 @@ const App: React.FC = () => {
               </button>
             </div>
 
-            <div className="p-6 overflow-y-auto">
+            <div className="p-6 overflow-y-auto h-[75vh]">
               {activeTab === 'config' ? (
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm mb-2 text-amber-100 font-bold">URL de l'application Web (Google Apps Script)</label>
-                    <input
-                      type="text"
-                      value={scriptUrl}
-                      onChange={(e) => setScriptUrl(e.target.value)}
-                      placeholder="https://script.google.com/macros/s/..."
-                      className="w-full p-3 rounded bg-stone-900 border border-stone-600 text-amber-100 text-sm font-mono focus:border-amber-500 outline-none"
-                    />
+                <div className="space-y-6">
+                  <div className="bg-stone-900/50 p-4 rounded-lg border border-stone-700 space-y-4">
+                    <p className="text-sm text-amber-100">
+                      Cet outil a besoin d'une base de données pour sauvegarder vos cartes.
+                      Vous pouvez en créer une <strong>gratuitement</strong> et <strong>facilement</strong> avec Google Sheets.
+                    </p>
+
+                    <div className="bg-amber-900/20 border border-amber-500/30 rounded p-4 text-sm text-amber-100/90">
+                      <p className="font-bold mb-3 text-amber-400">Guide d'installation :</p>
+                      <ol className="list-decimal ml-5 space-y-2 text-xs">
+                        <li>Créez un nouveau <strong>Google Sheet</strong> sur votre Drive (doit être public ou accessible).</li>
+                        <li>Dans le fichier, allez au menu <strong>Extensions</strong> &gt; <strong>Apps Script</strong>.</li>
+                        <li>Copiez le code complet depuis l'onglet <strong className="text-amber-300">Code Script Google</strong> de cette fenêtre.</li>
+                        <li>Collez-le dans l'éditeur Apps Script (fichier <code>Code.gs</code>) en remplaçant le contenu existant.</li>
+                        <li>Cliquez sur <strong>Déployer</strong> &gt; <strong>Nouveau déploiement</strong>.</li>
+                        <li>Cliquez sur la roue dentée "Sélectionnez le type" &gt; <strong>Application Web</strong>.</li>
+                        <li>Configurez ainsi :
+                          <ul className="list-disc ml-4 mt-1 space-y-1 text-amber-200/80">
+                            <li>Exécuter en tant que : <strong>Moi</strong></li>
+                            <li>Qui a accès : <strong>Tout le monde</strong> (Important pour que l'app fonctionne)</li>
+                          </ul>
+                        </li>
+                        <li>Cliquez sur <strong>Déployer</strong>, copiez l'URL de l'application Web et collez-la ci-dessous.</li>
+                      </ol>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm mb-2 text-amber-100 font-bold">URL de l'application Web (Google Apps Script)</label>
+                      <input
+                        type="text"
+                        value={scriptUrl}
+                        onChange={(e) => setScriptUrl(e.target.value)}
+                        placeholder="https://script.google.com/macros/s/..."
+                        className="w-full p-3 rounded bg-stone-950 border border-stone-600 text-amber-100 text-sm font-mono focus:border-amber-500 outline-none placeholder-stone-600"
+                      />
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="block text-sm mb-2 text-amber-100 font-bold">Clé API remove.bg (suppression d'arrière-plan)</label>
-                    <input
-                      type="text"
-                      value={removeBgApiKey}
-                      onChange={(e) => {
-                        const newVal = e.target.value;
-                        setRemoveBgApiKey(newVal);
-                        localStorage.setItem("removebg_api_key", newVal);
-                      }}
-                      placeholder="Votre clé API remove.bg"
-                      className="w-full p-3 rounded bg-stone-900 border border-stone-600 text-amber-100 text-sm font-mono focus:border-amber-500 outline-none"
-                    />
-                    <p className="text-xs text-amber-100/60 mt-1">
-                      Si vide, la clé par défaut du serveur sera utilisée (si disponible). Obtenez votre clé API sur <a href="https://www.remove.bg/api" target="_blank" className="underline hover:text-amber-200">remove.bg/api</a>
-                    </p>
-                  </div>
+                  <div className="bg-stone-900/30 p-4 rounded-lg border border-stone-800 space-y-4">
+                    <div className="border-b border-stone-700 pb-2">
+                      <h4 className="text-amber-400 font-bold text-sm">Capacités IA (Optionnel)</h4>
+                      <p className="text-xs text-stone-400 mt-1">
+                        Si vous souhaitez rajouter des capacités IA, comme générer le texte ou l'image des cartes,
+                        ou supprimer le fond des cartes, il vous faut renseigner des clés API.
+                      </p>
+                    </div>
 
-                  <div>
-                    <label className="block text-sm mb-2 text-amber-100 font-bold">Clé API Gemini (Génération d'images)</label>
-                    <input
-                      type="text"
-                      value={geminiApiKey}
-                      onChange={(e) => {
-                        const newVal = e.target.value;
-                        setGeminiApiKey(newVal);
-                        localStorage.setItem("gemini_api_key", newVal);
-                      }}
-                      placeholder="Votre clé API Google AI Studio (optionnel si configuré côté serveur)"
-                      className="w-full p-3 rounded bg-stone-900 border border-stone-600 text-amber-100 text-sm font-mono focus:border-amber-500 outline-none"
-                    />
-                    <p className="text-xs text-amber-100/60 mt-1">
-                      Si vide, la clé par défaut du serveur sera utilisée (si disponible). Obtenez une clé sur <a href="https://aistudio.google.com/app/apikey" target="_blank" className="underline hover:text-amber-200">aistudio.google.com</a>
-                    </p>
+                    <div>
+                      <label className="block text-sm mb-2 text-amber-100 font-bold">Clé API remove.bg (suppression d'arrière-plan)</label>
+                      <input
+                        type="text"
+                        value={removeBgApiKey}
+                        onChange={(e) => {
+                          const newVal = e.target.value;
+                          setRemoveBgApiKey(newVal);
+                          localStorage.setItem("removebg_api_key", newVal);
+                        }}
+                        placeholder="Votre clé API remove.bg"
+                        className="w-full p-3 rounded bg-stone-950 border border-stone-600 text-amber-100 text-sm font-mono focus:border-amber-500 outline-none placeholder-stone-600"
+                      />
+                      <p className="text-xs text-stone-500 mt-1">
+                        Si vide, la clé par défaut du serveur sera utilisée (si disponible). Obtenez votre clé API sur <a href="https://www.remove.bg/api" target="_blank" className="underline hover:text-amber-200">remove.bg/api</a>
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm mb-2 text-amber-100 font-bold">Clé API Gemini (Génération d'images)</label>
+                      <input
+                        type="text"
+                        value={geminiApiKey}
+                        onChange={(e) => {
+                          const newVal = e.target.value;
+                          setGeminiApiKey(newVal);
+                          localStorage.setItem("gemini_api_key", newVal);
+                        }}
+                        placeholder="Votre clé API Google AI Studio"
+                        className="w-full p-3 rounded bg-stone-950 border border-stone-600 text-amber-100 text-sm font-mono focus:border-amber-500 outline-none placeholder-stone-600"
+                      />
+                      <p className="text-xs text-stone-500 mt-1">
+                        Si vide, la clé par défaut du serveur sera utilisée (si disponible). Obtenez une clé sur <a href="https://aistudio.google.com/app/apikey" target="_blank" className="underline hover:text-amber-200">aistudio.google.com</a>
+                      </p>
+                    </div>
                   </div>
 
                   <div className="flex justify-end pt-2">
@@ -714,18 +754,6 @@ const App: React.FC = () => {
                       </ul>
                     </div>
                   )}
-
-                  <div className="bg-amber-900/20 border border-amber-500/30 rounded p-4 text-sm text-amber-100/80">
-                    <p className="font-bold mb-2">Instructions rapides :</p>
-                    <ol className="list-decimal ml-5 space-y-2 text-xs">
-                      <li>Copiez le code depuis l'onglet <strong>Code Script Google</strong>.</li>
-                      <li>Dans Google Apps Script, collez-le dans <code>Code.gs</code>.</li>
-                      <li>Cliquez sur <strong>Déployer &gt; Gérer les déploiements</strong>.</li>
-                      <li>Cliquez sur l'icône crayon (Modifier).</li>
-                      <li>Version : sélectionnez <strong>Nouvelle version</strong>.</li>
-                      <li>Cliquez sur <strong>Déployer</strong>.</li>
-                    </ol>
-                  </div>
                 </div>
               ) : (
                 <div className="space-y-4 h-full flex flex-col">
@@ -744,7 +772,7 @@ const App: React.FC = () => {
                     <textarea
                       readOnly
                       value={GOOGLE_SCRIPT_TEMPLATE}
-                      className="w-full h-[400px] p-4 bg-transparent text-green-400 font-mono text-xs resize-none outline-none"
+                      className="w-full h-full absolute inset-0 p-4 bg-transparent text-green-400 font-mono text-xs resize-none outline-none"
                     />
                   </div>
                 </div>
@@ -760,6 +788,15 @@ const App: React.FC = () => {
           isOpen={showImportModal}
           onClose={() => setShowImportModal(false)}
           onImport={handleImportCards}
+        />
+      )}
+
+      {/* Legal Modal */}
+      {showLegalModal && (
+        <LegalModal
+          isOpen={showLegalModal}
+          onClose={() => setShowLegalModal(false)}
+          initialTab={legalActiveTab}
         />
       )}
 
@@ -875,6 +912,13 @@ const App: React.FC = () => {
           />
         )}
       </main>
+
+      <Footer
+        onOpenLegal={(tab) => {
+          setLegalActiveTab(tab);
+          setShowLegalModal(true);
+        }}
+      />
     </div>
   );
 };
