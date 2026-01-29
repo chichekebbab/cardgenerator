@@ -1,15 +1,16 @@
 steps:
-  # Debug: Print substitution variable length (not the actual value for security)
+  # Debug: Print substitution variable length (not the actual values for security)
   - name: 'gcr.io/cloud-builders/docker'
     entrypoint: 'bash'
     args:
       - '-c'
-      - 'echo "=== Debug ===" && echo "API key length: $(echo -n "$$VITE_KEY" | wc -c)" && echo "First 4 chars: $(echo "$$VITE_KEY" | cut -c1-4)"'
+      - 'echo "=== Debug ===" && echo "Gemini API key length: $(echo -n "$$GEMINI_KEY" | wc -c)" && echo "Remove.bg API key length: $(echo -n "$$REMOVEBG_KEY" | wc -c)"'
     env:
-      - 'VITE_KEY=$_VITE_GEMINI_API_KEY'
+      - 'GEMINI_KEY=$_VITE_GEMINI_API_KEY'
+      - 'REMOVEBG_KEY=$_VITE_REMOVE_BG_API_KEY'
     id: 'Debug'
 
-  # Étape 1 : Construire l'image Docker en passant la clé API
+  # Étape 1 : Construire l'image Docker en passant les clés API
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'build'
@@ -18,6 +19,8 @@ steps:
       - '$_AR_HOSTNAME/$_AR_PROJECT_ID/$_AR_REPOSITORY/$_SERVICE_NAME:$COMMIT_SHA'
       - '--build-arg'
       - 'VITE_GEMINI_API_KEY=$_VITE_GEMINI_API_KEY'
+      - '--build-arg'
+      - 'VITE_REMOVE_BG_API_KEY=$_VITE_REMOVE_BG_API_KEY'
       - '.'
     id: 'Build'
 
@@ -49,6 +52,11 @@ options:
   logging: CLOUD_LOGGING_ONLY
 
 # Définition des variables que l'on va régler dans la console Google
+# Note: Les clés API sont OPTIONNELLES - les utilisateurs peuvent les configurer via l'interface
 substitutions:
     _SERVICE_NAME: cardgenerator
     _DEPLOY_REGION: europe-west9
+    # Clés API optionnelles (valeurs par défaut vides)
+    # Les utilisateurs finaux peuvent fournir leurs propres clés via l'interface front-end
+    _VITE_GEMINI_API_KEY: ''
+    _VITE_REMOVE_BG_API_KEY: ''

@@ -1,0 +1,26 @@
+# Configuration Netlify pour le générateur de cartes Munchkin
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# Redirection pour les Single Page Applications (SPA)
+# Tous les chemins renvoient à index.html pour que React Router fonctionne
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# En-têtes de sécurité et performance
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+
+# Cache pour les assets statiques
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

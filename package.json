@@ -1,7 +1,24 @@
 {
   "name": "générateur-de-cartes-munchkin",
-  "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "private": false,
+  "description": "Générateur de cartes Munchkin personnalisées avec intelligence artificielle",
+  "author": "chichekebbab",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/chichekebbab/cardgenerator"
+  },
+  "keywords": [
+    "munchkin",
+    "card-generator",
+    "game",
+    "ai",
+    "image-generation",
+    "react",
+    "vite",
+    "typescript"
+  ],
   "type": "module",
   "scripts": {
     "dev": "vite",
