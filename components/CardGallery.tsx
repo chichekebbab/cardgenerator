@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { CardData, CardType } from '../types';
 import CardThumbnail from './CardThumbnail';
 import BatchExportRenderer from './BatchExportRenderer';
+import { getCardCategory } from '../utils/layoutUtils';
 
 interface CardGalleryProps {
   cards: CardData[];
@@ -68,6 +69,7 @@ const CardGallery: React.FC<CardGalleryProps> = ({
   const [filterImage, setFilterImage] = useState<'all' | 'avec' | 'sans'>('all');
   const [isExportingSelection, setIsExportingSelection] = useState(false);
   const [exportProgress, setExportProgress] = useState({ current: 0, total: 0 });
+  const [exportMode, setExportMode] = useState<'all' | 'Donjon' | 'Tresor'>('all');
 
   // Filter cards based on search query and filters
   const filteredCards = useMemo(() => {
@@ -259,23 +261,47 @@ const CardGallery: React.FC<CardGalleryProps> = ({
 
           {/* Export Button */}
           {filteredCards.length > 0 && (
-            <button
-              onClick={() => {
-                setExportProgress({ current: 0, total: filteredCards.length });
-                setIsExportingSelection(true);
-              }}
-              disabled={isExportingSelection}
-              className="hidden sm:flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg shadow-md transition-colors whitespace-nowrap"
-            >
-              {isExportingSelection ? (
-                <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />
-              ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-              )}
-              <span>Exporter la sélection ({filteredCards.length})</span>
-            </button>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <select
+                value={exportMode}
+                onChange={(e) => setExportMode(e.target.value as 'all' | 'Donjon' | 'Tresor')}
+                className="px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-amber-500 focus:border-amber-500 bg-white"
+                disabled={isExportingSelection}
+              >
+                <option value="all">Tout exporter</option>
+                <option value="Donjon">Exporter Donjon</option>
+                <option value="Tresor">Exporter Trésors</option>
+              </select>
+              <button
+                onClick={() => {
+                  const cardsToExport = filteredCards.filter(c => {
+                    if (exportMode === 'all') return true;
+                    return getCardCategory(c) === exportMode;
+                  });
+                  if (cardsToExport.length === 0) {
+                    alert('Aucune carte de ce type à exporter.');
+                    return;
+                  }
+                  setExportProgress({ current: 0, total: cardsToExport.length });
+                  setIsExportingSelection(true);
+                }}
+                disabled={isExportingSelection}
+                className="hidden sm:flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg shadow-md transition-colors whitespace-nowrap"
+              >
+                {isExportingSelection ? (
+                  <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                )}
+                <span>Exporter ({
+                  exportMode === 'all'
+                    ? filteredCards.length
+                    : filteredCards.filter(c => getCardCategory(c) === exportMode).length
+                })</span>
+              </button>
+            </div>
           )}
           <button
             onClick={onNewCard}
@@ -518,7 +544,10 @@ const CardGallery: React.FC<CardGalleryProps> = ({
           </div>
 
           <BatchExportRenderer
-            cards={filteredCards}
+            cards={filteredCards.filter(c => {
+              if (exportMode === 'all') return true;
+              return getCardCategory(c) === exportMode;
+            })}
             onComplete={() => setIsExportingSelection(false)}
             onProgress={(current, total) => setExportProgress({ current, total })}
           />

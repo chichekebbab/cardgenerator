@@ -44,18 +44,25 @@ const BatchExportRenderer: React.FC<BatchExportRendererProps> = ({ cards, onComp
 
             try {
                 // Attendre le rendu du layout et de l'image
-                await new Promise(resolve => setTimeout(resolve, 500));
+                // Attendre le rendu du layout et de l'image (Security delay)
+                await new Promise(resolve => setTimeout(resolve, 150));
 
                 if (exportRef.current) {
+                    // Force GC pause every 20 cards
+                    if (currentIndex > 0 && currentIndex % 20 === 0) {
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                    }
+
+                    // Utilisation de toPng (plus fiable) + conversion manuelle pour éviter les bugs de toBlob
                     const dataUrl = await toPng(exportRef.current, {
                         quality: 1.0,
                         pixelRatio: 1,
                         cacheBust: true
                     });
 
-                    // Convertir dataUrl en blob
-                    const response = await fetch(dataUrl);
-                    const blob = await response.blob();
+                    // Conversion immédiate en Blob pour libérer la mémoire (GC friendly)
+                    const res = await fetch(dataUrl);
+                    const blob = await res.blob();
 
                     if (blob) {
                         const card = cards[currentIndex];
@@ -75,7 +82,7 @@ const BatchExportRenderer: React.FC<BatchExportRendererProps> = ({ cards, onComp
             }
         };
 
-        // Petit délai initial pour s'assurer que le re-render a eu lieu et que le DOM est à jour pour la nouvelle carte
+        // Petit délai pour s'assurer que le re-render a eu lieu et que le DOM est à jour
         const timer = setTimeout(processNext, 100);
         return () => clearTimeout(timer);
 
