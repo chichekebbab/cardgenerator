@@ -571,7 +571,7 @@ const App: React.FC = () => {
               <div className="text-3xl">🗡️</div>
               <div>
                 <h1 className="text-xl font-bold tracking-wider">MunchkinGen</h1>
-                <p className="text-xs text-amber-200 opacity-80">Propulsé par Gemini Nano Banana</p>
+                <p className="text-xs text-amber-200 opacity-80">Complétez votre jeu avec vos propres cartes, ou construisez votre deck entièrement !</p>
               </div>
             </div>
             <div className="flex items-center gap-4">
