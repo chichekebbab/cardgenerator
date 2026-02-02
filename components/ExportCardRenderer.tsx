@@ -1,6 +1,7 @@
 import React, { forwardRef } from 'react';
 import { CardData, CardType } from '../types';
 import { formatBonus } from '../utils/layoutUtils';
+import { formatGoldDisplay } from '../utils/goldFormatter';
 
 interface ExportCardRendererProps {
     data: CardData;
@@ -169,11 +170,11 @@ const ExportCardRenderer = forwardRef<HTMLDivElement, ExportCardRendererProps>((
 
                 {/* 5. FOOTER GAUCHE - 90;914 */}
                 <div className="absolute z-30 flex flex-col items-start"
-                    style={{ left: '90px', top: '914px' }}>
-                    {data.type === CardType.MONSTER && data.levelsGained && (
+                    style={{ left: '90px', top: '902px' }}>
+                    {data.type === CardType.MONSTER && data.levelsGained && data.levelsGained !== 1 && (
                         <span className="font-medieval font-bold text-[#682A22] whitespace-nowrap"
                             style={{ fontSize: '1.8rem' }}>
-                            {data.levelsGained} Niv.
+                            {data.levelsGained} niveaux
                         </span>
                     )}
                     {data.type === CardType.ITEM && (
@@ -194,24 +195,31 @@ const ExportCardRenderer = forwardRef<HTMLDivElement, ExportCardRendererProps>((
                     )}
                 </div>
 
-                {/* FOOTER DROIT - 390;914 */}
-                {data.type !== CardType.FAITHFUL_SERVANT && !(data.type === CardType.ITEM && data.itemSlot === 'Amélioration') && (
-                    <div className="absolute z-30"
-                        style={{ left: '390px', top: '914px' }}>
-                        <span className="font-medieval font-bold text-[#682A22] whitespace-nowrap block"
-                            style={{ fontSize: '1.8rem' }}>
-                            {data.gold ? data.gold : (
-                                <>
-                                    {data.type === CardType.ITEM && "Sans Valeur"}
-                                    {data.type === CardType.MONSTER && "Pas de Trésor"}
-                                    {data.type !== CardType.ITEM && data.type !== CardType.MONSTER && data.type !== CardType.DUNGEON_TRAP && data.type !== CardType.DUNGEON_BONUS && data.type !== CardType.TREASURE_TRAP && (
-                                        <span className="opacity-80">{data.type}</span>
-                                    )}
-                                </>
-                            )}
-                        </span>
-                    </div>
-                )}
+                {/* FOOTER DROIT : Trésor / Or - Type-specific display */}
+                {(() => {
+                    const formattedGold = formatGoldDisplay(data.type, data.gold);
+
+                    // Don't display if formatGoldDisplay returns null (Curse, Race, Class, Level_Up, Faithful_Servant)
+                    // Also don't display for Item with Amélioration slot
+                    if (!formattedGold || (data.type === CardType.ITEM && data.itemSlot === 'Amélioration')) {
+                        return null;
+                    }
+
+                    // Adjust position based on card type
+                    // Monsters: more to the right (420px instead of 390px)
+                    // Items: keep at 390px to avoid overflow with "pièces d'or"
+                    const leftPosition = data.type === CardType.MONSTER ? '420px' : '390px';
+
+                    return (
+                        <div className="absolute z-30"
+                            style={{ left: leftPosition, top: '902px' }}>
+                            <span className="font-medieval font-bold text-[#682A22] whitespace-nowrap block"
+                                style={{ fontSize: '1.8rem' }}>
+                                {formattedGold}
+                            </span>
+                        </div>
+                    );
+                })()}
             </div>
         </div>
     );

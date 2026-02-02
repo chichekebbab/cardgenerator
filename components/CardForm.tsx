@@ -386,7 +386,8 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
               />
             </div>
           )}
-          {cardData.type !== CardType.FAITHFUL_SERVANT && (
+          {/* Val/Trésors - Only for Monster and Item types */}
+          {(cardData.type === CardType.MONSTER || cardData.type === CardType.ITEM) && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Val/Trésors</label>
               <div className="relative">
@@ -402,7 +403,7 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
                     })()
                     : 'border-gray-300'
                     }`}
-                  placeholder={cardData.type === CardType.MONSTER ? "ex: 2 trésors" : "ex: 500 Pièces d'Or"}
+                  placeholder={cardData.type === CardType.MONSTER ? "ex: 2" : "ex: 500"}
                 />
                 {cardData.type === CardType.MONSTER && typeof cardData.level === 'number' && cardData.level > 0 && (() => {
                   const validation = validateMonsterBalance(cardData.level, cardData.gold || '', cardData.levelsGained);
@@ -417,6 +418,11 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
                   ) : null;
                 })()}
               </div>
+              <p className="text-xs text-gray-500 mt-1 italic">
+                {cardData.type === CardType.MONSTER
+                  ? "Entrez uniquement la valeur numérique. Le texte « trésors » sera ajouté automatiquement."
+                  : "Entrez uniquement la valeur numérique. Le texte « pièces d'or » sera ajouté automatiquement."}
+              </p>
             </div>
           )}
         </div>
@@ -435,12 +441,12 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
                     value={cardData.levelsGained || ''}
                     onChange={(e) => handleChange('levelsGained', parseInt(e.target.value) || '')}
                     className={`w-full p-2 border rounded text-sm focus:ring-1 focus:ring-green-500 ${typeof cardData.level === 'number' && cardData.level > 0
-                        ? (() => {
-                          const validation = validateMonsterBalance(cardData.level, cardData.gold || '', cardData.levelsGained);
-                          const hasLevelWarning = validation.warnings.some(w => w.includes('Niveaux'));
-                          return hasLevelWarning ? 'border-yellow-400 bg-yellow-50' : 'border-gray-300';
-                        })()
-                        : 'border-gray-300'
+                      ? (() => {
+                        const validation = validateMonsterBalance(cardData.level, cardData.gold || '', cardData.levelsGained);
+                        const hasLevelWarning = validation.warnings.some(w => w.includes('Niveaux'));
+                        return hasLevelWarning ? 'border-yellow-400 bg-yellow-50' : 'border-gray-300';
+                      })()
+                      : 'border-gray-300'
                       }`}
                     placeholder="1"
                   />

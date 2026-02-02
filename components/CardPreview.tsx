@@ -4,6 +4,7 @@ import { toPng } from 'html-to-image';
 import ExportCardRenderer from './ExportCardRenderer';
 import { useNotification } from './NotificationContext';
 import { getExportFilename, formatBonus } from '../utils/layoutUtils';
+import { formatGoldDisplay } from '../utils/goldFormatter';
 
 interface CardPreviewProps {
     data: CardData;
@@ -416,12 +417,12 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data, index }) => {
 
                     {/* COIN GAUCHE (90;914) : Niveaux Gagnés, Gros, Emplacement */}
                     <div className="absolute z-30 flex flex-col items-start"
-                        style={{ left: scaleX(90), top: scaleY(914) }}>
+                        style={{ left: scaleX(90), top: scaleY(908) }}>
 
-                        {data.type === CardType.MONSTER && data.levelsGained && (
+                        {data.type === CardType.MONSTER && data.levelsGained && data.levelsGained !== 1 && (
                             <span className="font-medieval font-bold text-[#682A22] whitespace-nowrap"
                                 style={{ fontSize: '0.9rem' }}>
-                                {data.levelsGained} Niv.
+                                {data.levelsGained} niveaux
                             </span>
                         )}
 
@@ -446,25 +447,31 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data, index }) => {
                         )}
                     </div>
 
-                    {/* COIN DROIT (390;914) : Trésor / Or - Masqué pour FAITHFUL_SERVANT et Amélioration */}
-                    {data.type !== CardType.FAITHFUL_SERVANT && !(data.type === CardType.ITEM && data.itemSlot === 'Amélioration') && (
-                        <div className="absolute z-30 flex flex-col items-start"
-                            style={{ left: scaleX(390), top: scaleY(914) }}>
+                    {/* COIN DROIT : Trésor / Or - Type-specific display */}
+                    {(() => {
+                        const formattedGold = formatGoldDisplay(data.type, data.gold);
 
-                            <span className="font-medieval font-bold text-[#682A22] whitespace-nowrap block"
-                                style={{ fontSize: '0.9rem' }}>
-                                {data.gold ? data.gold : (
-                                    <>
-                                        {data.type === CardType.ITEM && "Sans Valeur"}
-                                        {data.type === CardType.MONSTER && "Pas de Trésor"}
-                                        {data.type !== CardType.ITEM && data.type !== CardType.MONSTER && data.type !== CardType.DUNGEON_TRAP && data.type !== CardType.DUNGEON_BONUS && data.type !== CardType.TREASURE_TRAP && (
-                                            <span className="opacity-80">{data.type}</span>
-                                        )}
-                                    </>
-                                )}
-                            </span>
-                        </div>
-                    )}
+                        // Don't display if formatGoldDisplay returns null (Curse, Race, Class, Level_Up, Faithful_Servant)
+                        // Also don't display for Item with Amélioration slot
+                        if (!formattedGold || (data.type === CardType.ITEM && data.itemSlot === 'Amélioration')) {
+                            return null;
+                        }
+
+                        // Adjust position based on card type
+                        // Monsters: more to the right (420 instead of 390)
+                        // Items: keep at 390 to avoid overflow with "pièces d'or"
+                        const leftPosition = data.type === CardType.MONSTER ? scaleX(420) : scaleX(390);
+
+                        return (
+                            <div className="absolute z-30 flex flex-col items-start"
+                                style={{ left: leftPosition, top: scaleY(908) }}>
+                                <span className="font-medieval font-bold text-[#682A22] whitespace-nowrap block"
+                                    style={{ fontSize: '0.9rem' }}>
+                                    {formattedGold}
+                                </span>
+                            </div>
+                        );
+                    })()}
 
                 </div>
             </div>

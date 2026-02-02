@@ -222,7 +222,17 @@ const CardList: React.FC<CardListProps> = ({ cards, onSelectCard, onUpdateCard, 
 
         // Only save if value changed
         const oldValue = card[column.key];
-        if (String(oldValue) !== String(newValue)) {
+        let hasChanged = false;
+
+        if (column.type === 'boolean') {
+            // For booleans, compare actual boolean values
+            hasChanged = Boolean(oldValue) !== Boolean(newValue);
+        } else {
+            // For other types, use string comparison
+            hasChanged = String(oldValue) !== String(newValue);
+        }
+
+        if (hasChanged) {
             const updatedCard = { ...card, [column.key]: newValue };
             try {
                 await onUpdateCard(updatedCard);
@@ -235,12 +245,25 @@ const CardList: React.FC<CardListProps> = ({ cards, onSelectCard, onUpdateCard, 
     };
 
     // Handle cell click
-    const handleCellClick = (e: React.MouseEvent, card: CardData, column: typeof COLUMNS[0]) => {
+    const handleCellClick = async (e: React.MouseEvent, card: CardData, column: typeof COLUMNS[0]) => {
         e.stopPropagation();
 
         // Title column opens the full editor
         if (column.key === 'title') {
             onSelectCard(card);
+            return;
+        }
+
+        // For boolean columns, toggle directly without entering edit mode
+        if (column.type === 'boolean' && onUpdateCard) {
+            const currentValue = card[column.key];
+            const newValue = !currentValue;
+            const updatedCard = { ...card, [column.key]: newValue };
+            try {
+                await onUpdateCard(updatedCard);
+            } catch (error) {
+                console.error('Failed to save:', error);
+            }
             return;
         }
 
@@ -337,10 +360,15 @@ const CardList: React.FC<CardListProps> = ({ cards, onSelectCard, onUpdateCard, 
         const value = card[column.key];
 
         if (column.type === 'boolean') {
-            return value ? (
-                <span className="inline-flex items-center justify-center w-6 h-6 bg-green-100 text-green-600 rounded-full text-xs font-bold">✓</span>
-            ) : (
-                <span className="inline-flex items-center justify-center w-6 h-6 bg-gray-100 text-gray-400 rounded-full text-xs">–</span>
+            // Render as a checkbox for better UX
+            return (
+                <input
+                    type="checkbox"
+                    checked={Boolean(value)}
+                    onChange={() => { }} // onChange is handled by cell click
+                    className="w-5 h-5 cursor-pointer accent-green-600 rounded"
+                    title={value ? 'Coché' : 'Non coché'}
+                />
             );
         }
 
@@ -570,10 +598,12 @@ const CardList: React.FC<CardListProps> = ({ cards, onSelectCard, onUpdateCard, 
                                                     key={`${card.id}-${column.key}`}
                                                     onClick={(e) => handleCellClick(e, card, column)}
                                                     className={`px-3 py-2.5 max-w-[200px] ${column.key === 'title'
-                                                        ? 'cursor-pointer'
-                                                        : onUpdateCard
-                                                            ? 'cursor-text hover:bg-amber-100/50'
-                                                            : ''
+                                                            ? 'cursor-pointer'
+                                                            : column.type === 'boolean' && onUpdateCard
+                                                                ? 'cursor-pointer hover:bg-amber-100/50'
+                                                                : onUpdateCard
+                                                                    ? 'cursor-text hover:bg-amber-100/50'
+                                                                    : ''
                                                         }`}
                                                 >
                                                     {renderCellValue(card, column)}
