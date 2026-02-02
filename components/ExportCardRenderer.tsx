@@ -105,43 +105,45 @@ const ExportCardRenderer = forwardRef<HTMLDivElement, ExportCardRendererProps>((
                 </div>
 
                 {/* 3. DESCRIPTION */}
-                {(data.type !== CardType.LEVEL_UP || data.description.trim() !== '') && (
-                    <div className="absolute z-30"
-                        style={{
-                            left: '60px',
-                            top: '229px',
-                            width: '541px',
-                            maxHeight: `${325 * ((data.descriptionBoxScale || 100) / 100) * 2}px`,
-                            overflow: 'hidden',
-                            backgroundImage: 'url(/texture/texture_description.png)',
-                            backgroundSize: 'cover',
-                            backgroundPosition: 'center',
-                            borderRadius: '8px',
-                            border: '4px solid #5a4a3a',
-                            boxShadow: '0 4px 8px rgba(0, 0, 0, 0.5), inset 0 2px 0 rgba(255, 255, 255, 0.15), inset 0 -2px 0 rgba(0, 0, 0, 0.2)'
-                        }}>
-                        {/* Overlay vignette */}
-                        <div className="absolute inset-0 pointer-events-none rounded-[4px]"
+                {((data.description && data.description.trim() !== '') ||
+                    (data.restrictions && data.restrictions.trim() !== '') ||
+                    (data.type === CardType.MONSTER && data.badStuff && data.badStuff.trim() !== '')) && (
+                        <div className="absolute z-30"
                             style={{
-                                background: 'radial-gradient(ellipse at center, transparent 40%, rgba(0, 0, 0, 0.35) 100%)'
-                            }}
-                        />
-                        <div className="relative w-full text-center font-munchkin-body font-medium text-black p-4"
-                            style={{ fontSize: `${descriptionFontSize}px`, lineHeight: '1.2' }}>
-                            {data.restrictions && (
-                                <div className="font-bold uppercase mb-2">{data.restrictions}</div>
-                            )}
-                            {data.description && data.description.trim() !== '' && <p style={{ margin: 0 }}>{data.description}</p>}
+                                left: '60px',
+                                top: '229px',
+                                width: '541px',
+                                maxHeight: `${325 * ((data.descriptionBoxScale || 100) / 100) * 2}px`,
+                                overflow: 'hidden',
+                                backgroundImage: 'url(/texture/texture_description.png)',
+                                backgroundSize: 'cover',
+                                backgroundPosition: 'center',
+                                borderRadius: '8px',
+                                border: '4px solid #5a4a3a',
+                                boxShadow: '0 4px 8px rgba(0, 0, 0, 0.5), inset 0 2px 0 rgba(255, 255, 255, 0.15), inset 0 -2px 0 rgba(0, 0, 0, 0.2)'
+                            }}>
+                            {/* Overlay vignette */}
+                            <div className="absolute inset-0 pointer-events-none rounded-[4px]"
+                                style={{
+                                    background: 'radial-gradient(ellipse at center, transparent 40%, rgba(0, 0, 0, 0.35) 100%)'
+                                }}
+                            />
+                            <div className="relative w-full text-center font-munchkin-body font-medium text-black p-4"
+                                style={{ fontSize: `${descriptionFontSize}px`, lineHeight: '1.2' }}>
+                                {data.restrictions && (
+                                    <div className="font-bold uppercase mb-2">{data.restrictions}</div>
+                                )}
+                                {data.description && data.description.trim() !== '' && <p style={{ margin: 0 }}>{data.description}</p>}
 
-                            {(data.type === CardType.MONSTER && data.badStuff) && (
-                                <div className="mt-3 text-left border-t-2 border-black/20 pt-2" style={{ width: '100%' }}>
-                                    <span className="font-bold">Incident Fâcheux : </span>
-                                    <span className="italic">{data.badStuff}</span>
-                                </div>
-                            )}
+                                {(data.type === CardType.MONSTER && data.badStuff) && (
+                                    <div className="mt-3 text-left border-t-2 border-black/20 pt-2" style={{ width: '100%' }}>
+                                        <span className="font-bold">Incident Fâcheux : </span>
+                                        <span className="italic">{data.badStuff}</span>
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                    </div>
-                )}
+                    )}
 
                 {/* 4. IMAGE ART - Zone: 60;510 -> 541px large, 400px haut */}
                 <div className="absolute z-20 flex items-center justify-center overflow-visible"

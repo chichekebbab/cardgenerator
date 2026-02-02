@@ -359,44 +359,46 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data, index }) => {
                     </div>
 
                     {/* 3. DESCRIPTION - Masquée pour LEVEL_UP si vide */}
-                    {(data.type !== CardType.LEVEL_UP || data.description.trim() !== '') && (
-                        <div className="absolute z-30"
-                            ref={descriptionRef}
-                            style={{
-                                left: scaleX(60),
-                                top: scaleY(229),
-                                width: scaleX(600 - 60),
-                                maxHeight: scaleY(325 * ((data.descriptionBoxScale || 100) / 100)),
-                                overflow: 'hidden',
-                                backgroundImage: 'url(/texture/texture_description.png)',
-                                backgroundSize: 'cover',
-                                backgroundPosition: 'center',
-                                borderRadius: '4px',
-                                border: '2px solid #5a4a3a',
-                                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.15), inset 0 -1px 0 rgba(0, 0, 0, 0.2)'
-                            }}>
-                            {/* Overlay vignette - assombrit uniquement les bords */}
-                            <div className="absolute inset-0 pointer-events-none rounded-[2px]"
+                    {((data.description && data.description.trim() !== '') ||
+                        (data.restrictions && data.restrictions.trim() !== '') ||
+                        (data.type === CardType.MONSTER && data.badStuff && data.badStuff.trim() !== '')) && (
+                            <div className="absolute z-30"
+                                ref={descriptionRef}
                                 style={{
-                                    background: 'radial-gradient(ellipse at center, transparent 40%, rgba(0, 0, 0, 0.35) 100%)'
-                                }}
-                            />
-                            <div className="relative w-full text-center font-munchkin-body font-medium text-black p-2"
-                                style={{ fontSize: `${descriptionFontSize}px`, lineHeight: '1.1' }}>
-                                {data.restrictions && (
-                                    <div className="font-bold uppercase mb-1">{data.restrictions}</div>
-                                )}
-                                {data.description && data.description.trim() !== '' && <p>{data.description}</p>}
-                                {/* Affichage de l'Incident Fâcheux ou Effect si applicable */}
-                                {(data.type === CardType.MONSTER && data.badStuff) && (
-                                    <div className="mt-2 text-left border-t border-black/20 pt-1">
-                                        <span className="font-bold">Incident Fâcheux : </span>
-                                        <span className="italic">{data.badStuff}</span>
-                                    </div>
-                                )}
+                                    left: scaleX(60),
+                                    top: scaleY(229),
+                                    width: scaleX(600 - 60),
+                                    maxHeight: scaleY(325 * ((data.descriptionBoxScale || 100) / 100)),
+                                    overflow: 'hidden',
+                                    backgroundImage: 'url(/texture/texture_description.png)',
+                                    backgroundSize: 'cover',
+                                    backgroundPosition: 'center',
+                                    borderRadius: '4px',
+                                    border: '2px solid #5a4a3a',
+                                    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.15), inset 0 -1px 0 rgba(0, 0, 0, 0.2)'
+                                }}>
+                                {/* Overlay vignette - assombrit uniquement les bords */}
+                                <div className="absolute inset-0 pointer-events-none rounded-[2px]"
+                                    style={{
+                                        background: 'radial-gradient(ellipse at center, transparent 40%, rgba(0, 0, 0, 0.35) 100%)'
+                                    }}
+                                />
+                                <div className="relative w-full text-center font-munchkin-body font-medium text-black p-2"
+                                    style={{ fontSize: `${descriptionFontSize}px`, lineHeight: '1.1' }}>
+                                    {data.restrictions && (
+                                        <div className="font-bold uppercase mb-1">{data.restrictions}</div>
+                                    )}
+                                    {data.description && data.description.trim() !== '' && <p>{data.description}</p>}
+                                    {/* Affichage de l'Incident Fâcheux ou Effect si applicable */}
+                                    {(data.type === CardType.MONSTER && data.badStuff) && (
+                                        <div className="mt-2 text-left border-t border-black/20 pt-1">
+                                            <span className="font-bold">Incident Fâcheux : </span>
+                                            <span className="italic">{data.badStuff}</span>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                        </div>
-                    )}
+                        )}
 
                     {/* 4. IMAGE (Bas - Espace restant) */}
                     {/* Je la place sous la zone de description (Y=500) jusqu'en bas (Y=900 approx) */}
