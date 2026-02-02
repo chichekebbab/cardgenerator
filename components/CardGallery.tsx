@@ -1,16 +1,21 @@
 import React, { useState, useMemo } from 'react';
-import { CardData, CardType } from '../types';
+import { CardData, CardType, PlaceholderCardData } from '../types';
 import CardThumbnail from './CardThumbnail';
 import BatchExportRenderer from './BatchExportRenderer';
+import PlaceholderCard from './PlaceholderCard';
 import { getCardCategory } from '../utils/layoutUtils';
+import { MONSTER_BALANCE_REFERENCE, getTargetCountForLevel, getTotalMonsterTarget, getRecommendedValues, getAllTargets } from '../utils/balancingConfig';
 
 interface CardGalleryProps {
   cards: CardData[];
   onSelectCard: (card: CardData) => void;
-  onNewCard: () => void;
+  onNewCard: (initialData?: Partial<CardData>) => void;
   isLoading: boolean;
   selectedCardId?: string;
+  targetTotal?: number;
 }
+
+
 
 // Define the order of card types for display
 const CARD_TYPE_ORDER: CardType[] = [
@@ -31,6 +36,7 @@ const CARD_TYPE_ORDER: CardType[] = [
 const getSectionStyle = (type: CardType) => {
   switch (type) {
     case CardType.MONSTER:
+      // Keeping existing structure but we will use the same dynamic logic for all
       return { bg: 'bg-red-50', border: 'border-red-200', header: 'bg-red-600', icon: '👹' };
     case CardType.CURSE:
       return { bg: 'bg-purple-50', border: 'border-purple-200', header: 'bg-purple-600', icon: '💀' };
@@ -61,6 +67,7 @@ const CardGallery: React.FC<CardGalleryProps> = ({
   onNewCard,
   isLoading,
   selectedCardId,
+  targetTotal = 350,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [collapsedSections, setCollapsedSections] = useState<Set<CardType>>(new Set());
@@ -70,6 +77,9 @@ const CardGallery: React.FC<CardGalleryProps> = ({
   const [isExportingSelection, setIsExportingSelection] = useState(false);
   const [exportProgress, setExportProgress] = useState({ current: 0, total: 0 });
   const [exportMode, setExportMode] = useState<'all' | 'Donjon' | 'Tresor'>('all');
+  const [sortByLevel, setSortByLevel] = useState(true);
+  const [showMissingCards, setShowMissingCards] = useState(true);
+  const [showFilters, setShowFilters] = useState(false);
 
   // Filter cards based on search query and filters
   const filteredCards = useMemo(() => {
@@ -172,6 +182,61 @@ const CardGallery: React.FC<CardGalleryProps> = ({
     return grouped;
   }, [cardsByType]);
 
+  // Calculate missing monster cards
+  const getMissingMonsterCards = useMemo((): PlaceholderCardData[] => {
+    if (!showMissingCards) return [];
+
+    const monsterCards = cardsByType.get(CardType.MONSTER) || [];
+    const missingCards: PlaceholderCardData[] = [];
+
+    // For each level in the new balancing configuration
+    MONSTER_BALANCE_REFERENCE.forEach(config => {
+      const existingCount = monsterCards.filter(card => card.level === config.level).length;
+      const targetForLevel = getTargetCountForLevel(config.level, targetTotal);
+      const missingCount = Math.max(0, targetForLevel - existingCount);
+
+      // Create placeholder cards for missing ones
+      for (let i = 0; i < missingCount; i++) {
+        missingCards.push({
+          level: config.level,
+          type: CardType.MONSTER,
+          targetTreasures: config.treasuresGained,
+          targetLevelsGained: config.levelsGained,
+          isPlaceholder: true,
+        });
+      }
+    });
+
+    return missingCards;
+  }, [showMissingCards, cardsByType, targetTotal]);
+
+  // Sort cards by level if enabled
+  const sortCardsByLevel = (cards: CardData[]): CardData[] => {
+    if (!sortByLevel) return cards;
+
+    return [...cards].sort((a, b) => {
+      const levelA = typeof a.level === 'number' ? a.level : 0;
+      const levelB = typeof b.level === 'number' ? b.level : 0;
+      return levelA - levelB;
+    });
+  };
+
+  // Combine real cards with placeholders and sort
+  const getCombinedMonsterCards = (): (CardData | PlaceholderCardData)[] => {
+    const realCards = cardsByType.get(CardType.MONSTER) || [];
+    const combined: (CardData | PlaceholderCardData)[] = [...realCards, ...getMissingMonsterCards];
+
+    if (sortByLevel) {
+      return combined.sort((a, b) => {
+        const levelA = 'isPlaceholder' in a ? a.level : (typeof a.level === 'number' ? a.level : 0);
+        const levelB = 'isPlaceholder' in b ? b.level : (typeof b.level === 'number' ? b.level : 0);
+        return levelA - levelB;
+      });
+    }
+
+    return combined;
+  };
+
   // Toggle section collapse
   const toggleSection = (type: CardType) => {
     setCollapsedSections(prev => {
@@ -188,130 +253,210 @@ const CardGallery: React.FC<CardGalleryProps> = ({
   // Count total cards matching search
   const totalMatchingCards = filteredCards.length;
 
+  // Get total targets for all types
+  const allTargets = useMemo(() => getAllTargets(targetTotal), [targetTotal]);
+
+  // Utility to get target for a type
+  const getTargetForType = (type: CardType): number => {
+    // Map CardType to Target Key if names differ, assuming strict match for now or manual mapping
+    // The keys in allTargets match CardType enum values generally?
+    // Check enum: RACE = 'Race', but keys are RACE.
+    // We need a mapping if they don't match or logic to access.
+    // Actually `allTargets` keys are strings 'RACE', 'CLASS', etc. 
+    // CardType enum values are 'Race', 'Classe', etc.
+    // We need a mapping.
+    switch (type) {
+      case CardType.RACE: return allTargets.RACE;
+      case CardType.CLASS: return allTargets.CLASS;
+      case CardType.DUNGEON_TRAP: return allTargets.DUNGEON_TRAP;
+      case CardType.FAITHFUL_SERVANT: return allTargets.FAITHFUL_SERVANT;
+      case CardType.DUNGEON_BONUS: return allTargets.DUNGEON_BONUS;
+      case CardType.LEVEL_UP: return allTargets.LEVEL_UP;
+      case CardType.CURSE: return allTargets.CURSE;
+      case CardType.MONSTER: return allTargets.MONSTER;
+      case CardType.TREASURE_TRAP: return allTargets.TREASURE_TRAP;
+      case CardType.ITEM: return allTargets.ITEM;
+      default: return 0;
+    }
+  };
+
   return (
     <div className="min-h-full">
       {/* Search Bar and Actions */}
-      <div className="sticky top-0 z-20 bg-stone-100/95 backdrop-blur-sm px-4 py-4 border-b border-stone-300 shadow-sm">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
-          {/* Search Input */}
-          <div className="relative flex-grow">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Rechercher des cartes..."
-              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-white shadow-sm"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+      <div className="sticky top-0 z-20 bg-stone-100/95 backdrop-blur-sm border-b border-stone-300 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 py-4 space-y-4">
+          <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+            {/* Search Input */}
+            <div className="relative flex-grow">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
-              </button>
-            )}
-          </div>
-
-          {/* Filters */}
-          <div className="flex gap-2">
-            <select
-              value={filterBase}
-              onChange={(e) => setFilterBase(e.target.value as 'all' | 'oui' | 'non')}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-amber-500 focus:border-amber-500"
-            >
-              <option value="all">Toutes (Base ?)</option>
-              <option value="oui">Base: Oui</option>
-              <option value="non">Base: Non</option>
-            </select>
-            <select
-              value={filterValidated}
-              onChange={(e) => setFilterValidated(e.target.value as 'all' | 'oui' | 'non')}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-amber-500 focus:border-amber-500"
-            >
-              <option value="all">Toutes (Valid ?)</option>
-              <option value="oui">Validée: Oui</option>
-              <option value="non">Validée: Non</option>
-            </select>
-            <select
-              value={filterImage}
-              onChange={(e) => setFilterImage(e.target.value as 'all' | 'avec' | 'sans')}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-amber-500 focus:border-amber-500"
-            >
-              <option value="all">Toutes (Image ?)</option>
-              <option value="avec">Image: Oui</option>
-              <option value="sans">Image: Non</option>
-            </select>
-          </div>
-
-          {/* Card count */}
-          <div className="text-sm text-gray-600 hidden sm:block whitespace-nowrap">
-            {searchQuery ? (
-              <span>{totalMatchingCards} carte{totalMatchingCards !== 1 ? 's' : ''} trouvée{totalMatchingCards !== 1 ? 's' : ''}</span>
-            ) : (
-              <span>{cards.length} carte{cards.length !== 1 ? 's' : ''} au total</span>
-            )}
-          </div>
-
-          {/* Export Button */}
-          {filteredCards.length > 0 && (
-            <div className="flex flex-col sm:flex-row gap-2">
-              <select
-                value={exportMode}
-                onChange={(e) => setExportMode(e.target.value as 'all' | 'Donjon' | 'Tresor')}
-                className="px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-amber-500 focus:border-amber-500 bg-white"
-                disabled={isExportingSelection}
-              >
-                <option value="all">Tout exporter</option>
-                <option value="Donjon">Exporter Donjon</option>
-                <option value="Tresor">Exporter Trésors</option>
-              </select>
-              <button
-                onClick={() => {
-                  const cardsToExport = filteredCards.filter(c => {
-                    if (exportMode === 'all') return true;
-                    return getCardCategory(c) === exportMode;
-                  });
-                  if (cardsToExport.length === 0) {
-                    alert('Aucune carte de ce type à exporter.');
-                    return;
-                  }
-                  setExportProgress({ current: 0, total: cardsToExport.length });
-                  setIsExportingSelection(true);
-                }}
-                disabled={isExportingSelection}
-                className="hidden sm:flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg shadow-md transition-colors whitespace-nowrap"
-              >
-                {isExportingSelection ? (
-                  <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />
-                ) : (
+              </div>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Rechercher des cartes..."
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-white shadow-sm"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
+                </button>
+              )}
+            </div>
+
+            {/* Toggle Filters Button */}
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`flex items-center justify-center gap-2 px-4 py-2.5 border rounded-lg font-medium transition-colors whitespace-nowrap ${showFilters
+                ? 'bg-amber-100 border-amber-300 text-amber-800'
+                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+              </svg>
+              <span>Filtres & Options</span>
+              {(filterBase !== 'all' || filterValidated !== 'all' || filterImage !== 'all' || sortByLevel || showMissingCards) && (
+                <span className="flex h-2.5 w-2.5 rounded-full bg-amber-500 -ml-1"></span>
+              )}
+            </button>
+
+            {/* New Card Button */}
+            <button
+              onClick={() => onNewCard()}
+              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg shadow-md transition-colors whitespace-nowrap"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              <span>Nouvelle Carte</span>
+            </button>
+          </div>
+
+          {/* Collapsible Filters & Options Panel */}
+          {showFilters && (
+            <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="flex flex-col md:flex-row gap-6">
+                {/* Display Options */}
+                <div className="flex-1 space-y-3">
+                  <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Affichage</h4>
+                  <div className="flex flex-wrap gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer select-none px-3 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 border border-transparent hover:border-gray-200 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={sortByLevel}
+                        onChange={(e) => setSortByLevel(e.target.checked)}
+                        className="w-5 h-5 rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+                      />
+                      <span className="text-gray-700">Trier par Niveau</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer select-none px-3 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 border border-transparent hover:border-gray-200 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={showMissingCards}
+                        onChange={(e) => setShowMissingCards(e.target.checked)}
+                        className="w-5 h-5 rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+                      />
+                      <span className="text-gray-700">Afficher cartes manquantes (Monstres)</span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Filters */}
+                <div className="flex-1 space-y-3">
+                  <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Filtres</h4>
+                  <div className="flex flex-wrap gap-2">
+                    <select
+                      value={filterBase}
+                      onChange={(e) => setFilterBase(e.target.value as 'all' | 'oui' | 'non')}
+                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-amber-500 focus:border-amber-500 bg-white"
+                    >
+                      <option value="all">Base: Toutes</option>
+                      <option value="oui">Base seulement</option>
+                      <option value="non">Custom seulement</option>
+                    </select>
+                    <select
+                      value={filterValidated}
+                      onChange={(e) => setFilterValidated(e.target.value as 'all' | 'oui' | 'non')}
+                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-amber-500 focus:border-amber-500 bg-white"
+                    >
+                      <option value="all">Validation: Toutes</option>
+                      <option value="oui">Validées</option>
+                      <option value="non">À valider</option>
+                    </select>
+                    <select
+                      value={filterImage}
+                      onChange={(e) => setFilterImage(e.target.value as 'all' | 'avec' | 'sans')}
+                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-amber-500 focus:border-amber-500 bg-white"
+                    >
+                      <option value="all">Image: Toutes</option>
+                      <option value="avec">Avec image</option>
+                      <option value="sans">Sans image</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Export Actions */}
+              <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
+                <div className="text-sm text-gray-500">
+                  {searchQuery ? (
+                    <span>{totalMatchingCards} carte{totalMatchingCards !== 1 ? 's' : ''} trouvée{totalMatchingCards !== 1 ? 's' : ''}</span>
+                  ) : (
+                    <span>{cards.length} carte{cards.length !== 1 ? 's' : ''} au total</span>
+                  )}
+                </div>
+
+                {filteredCards.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={exportMode}
+                      onChange={(e) => setExportMode(e.target.value as 'all' | 'Donjon' | 'Tresor')}
+                      className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-amber-500 focus:border-amber-500 bg-white"
+                      disabled={isExportingSelection}
+                    >
+                      <option value="all">Tout exporter</option>
+                      <option value="Donjon">Sortie Donjon</option>
+                      <option value="Tresor">Sortie Trésors</option>
+                    </select>
+                    <button
+                      onClick={() => {
+                        const cardsToExport = filteredCards.filter(c => {
+                          if (exportMode === 'all') return true;
+                          return getCardCategory(c) === exportMode;
+                        });
+                        if (cardsToExport.length === 0) {
+                          alert('Aucune carte de ce type à exporter.');
+                          return;
+                        }
+                        setExportProgress({ current: 0, total: cardsToExport.length });
+                        setIsExportingSelection(true);
+                      }}
+                      disabled={isExportingSelection}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg shadow-sm transition-colors"
+                    >
+                      {isExportingSelection ? (
+                        <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                      )}
+                      <span>ZIP</span>
+                    </button>
+                  </div>
                 )}
-                <span>Exporter ({
-                  exportMode === 'all'
-                    ? filteredCards.length
-                    : filteredCards.filter(c => getCardCategory(c) === exportMode).length
-                })</span>
-              </button>
+              </div>
             </div>
           )}
-          <button
-            onClick={onNewCard}
-            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg shadow-md transition-colors whitespace-nowrap"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            <span>Nouvelle Carte</span>
-          </button>
         </div>
       </div>
 
@@ -370,21 +515,46 @@ const CardGallery: React.FC<CardGalleryProps> = ({
 
       {/* Card Sections by Type */}
       {
-        !isLoading && filteredCards.length > 0 && (
+        !isLoading && (filteredCards.length > 0 || showMissingCards) && (
           <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
             {CARD_TYPE_ORDER.map(type => {
-              const typeCards = cardsByType.get(type) || [];
-              if (typeCards.length === 0) return null;
+              // Prepare cards for this section
+              let sectionCards: (CardData | PlaceholderCardData)[] = [];
+              let totalCount = 0;
+              let missingCount = 0;
+
+              if (type === CardType.MONSTER) {
+                sectionCards = getCombinedMonsterCards();
+                totalCount = sectionCards.length;
+                missingCount = sectionCards.filter(c => 'isPlaceholder' in c).length;
+              } else {
+                // Standard behavior for other types
+                const rawCards = cardsByType.get(type) || [];
+                sectionCards = sortCardsByLevel(rawCards);
+                totalCount = sectionCards.length;
+              }
+
+              if (sectionCards.length === 0) return null;
 
               const style = getSectionStyle(type);
               const isCollapsed = collapsedSections.has(type);
+
+              // Calculate counts
+              const nonPlaceholderCards = sectionCards.filter(c => !('isPlaceholder' in c)) as CardData[];
+              const validatedCount = nonPlaceholderCards.filter(c => c.isValidated).length;
+              const globalTargetCount = getTargetForType(type) || 0;
+              const generatedCount = nonPlaceholderCards.length;
+
+              const progressPercent = globalTargetCount > 0
+                ? Math.min(100, (validatedCount / globalTargetCount) * 100)
+                : 0;
 
               // Special handling for ITEM type with subcategories
               if (type === CardType.ITEM) {
                 return (
                   <section
                     key={type}
-                    className={`rounded-xl overflow-hidden border-2 ${style.border} ${style.bg}`}
+                    className={`rounded-xl overflow-hidden border-2 transition-all duration-300 ${style.border} ${style.bg} shadow-sm hover:shadow-md`}
                   >
                     {/* Section Header */}
                     <button
@@ -394,9 +564,21 @@ const CardGallery: React.FC<CardGalleryProps> = ({
                       <div className="flex items-center gap-3">
                         <span className="text-2xl">{style.icon}</span>
                         <span>{type}</span>
-                        <span className="text-white/80 font-normal text-sm">
-                          ({typeCards.length} carte{typeCards.length !== 1 ? 's' : ''})
-                        </span>
+                        {/* Unified Counter Display for Items */}
+                        <div className="flex items-center gap-3 ml-2">
+                          <div className="flex flex-col gap-0.5 w-32 sm:w-48">
+                            <div className="flex justify-between text-xs text-white/90 font-medium px-0.5">
+                              <span>Progression (Validées)</span>
+                              <span>{validatedCount}/{globalTargetCount}</span>
+                            </div>
+                            <div className="w-full bg-black/20 rounded-full h-1.5 overflow-hidden border border-white/20">
+                              <div
+                                className="bg-white/90 h-full rounded-full shadow-sm transition-all duration-500"
+                                style={{ width: `${progressPercent}%` }}
+                              />
+                            </div>
+                          </div>
+                        </div>
                       </div>
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -417,7 +599,10 @@ const CardGallery: React.FC<CardGalleryProps> = ({
                       <div className="overflow-hidden">
                         <div className="p-4 space-y-4">
                           {ITEM_SLOT_ORDER.map(slot => {
-                            const slotCards = itemsBySlot.get(slot) || [];
+                            // Need to handle sorting here too for consistency
+                            const rawSlotCards = itemsBySlot.get(slot) || [];
+                            const slotCards = sortCardsByLevel(rawSlotCards);
+
                             if (slotCards.length === 0) return null;
 
                             const slotLabel = slot === '' ? 'Usage unique' : slot === 'NoSlot' ? 'Sans emplacement' : slot === 'Amélioration' ? 'Amélioration' : slot;
@@ -429,8 +614,8 @@ const CardGallery: React.FC<CardGalleryProps> = ({
                                   <h4 className="font-semibold text-amber-900 text-sm">
                                     {slotLabel}
                                   </h4>
-                                  <span className="text-xs text-amber-700">
-                                    ({slotCards.length} carte{slotCards.length !== 1 ? 's' : ''})
+                                  <span className="text-xs text-amber-700 font-medium">
+                                    ({slotCards.length})
                                   </span>
                                 </div>
                                 {/* Cards Grid */}
@@ -454,11 +639,11 @@ const CardGallery: React.FC<CardGalleryProps> = ({
                 );
               }
 
-              // Default rendering for other types
+              // Default rendering for other types (including MONSTER with mixed placeholders)
               return (
                 <section
                   key={type}
-                  className={`rounded-xl overflow-hidden border-2 ${style.border} ${style.bg}`}
+                  className={`rounded-xl overflow-hidden border-2 transition-all duration-300 ${style.border} ${style.bg} shadow-sm hover:shadow-md`}
                 >
                   {/* Section Header */}
                   <button
@@ -468,9 +653,21 @@ const CardGallery: React.FC<CardGalleryProps> = ({
                     <div className="flex items-center gap-3">
                       <span className="text-2xl">{style.icon}</span>
                       <span>{type}</span>
-                      <span className="text-white/80 font-normal text-sm">
-                        ({typeCards.length} carte{typeCards.length !== 1 ? 's' : ''})
-                      </span>
+                      {/* Unified Counter Display for All Types */}
+                      <div className="flex items-center gap-3 ml-2">
+                        <div className="flex flex-col gap-0.5 w-32 sm:w-48">
+                          <div className="flex justify-between text-xs text-white/90 font-medium px-0.5">
+                            <span>Progression (Validées)</span>
+                            <span>{validatedCount}/{globalTargetCount}</span>
+                          </div>
+                          <div className="w-full bg-black/20 rounded-full h-1.5 overflow-hidden border border-white/20">
+                            <div
+                              className="bg-white/90 h-full rounded-full shadow-sm transition-all duration-500"
+                              style={{ width: `${progressPercent}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
                     </div>
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -491,14 +688,44 @@ const CardGallery: React.FC<CardGalleryProps> = ({
                     <div className="overflow-hidden">
                       <div className="p-4">
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                          {typeCards.map(card => (
-                            <CardThumbnail
-                              key={card.id}
-                              card={card}
-                              onClick={() => onSelectCard(card)}
-                              isSelected={card.id === selectedCardId}
-                            />
-                          ))}
+                          {sectionCards.map((item, index) => {
+                            // Check if it's a placeholder
+                            if ('isPlaceholder' in item) {
+                              return (
+                                <PlaceholderCard
+                                  key={`placeholder-${item.level}-${index}`}
+                                  level={item.level}
+                                  type={item.type}
+                                  onClick={() => {
+                                    // Pre-fill creation data
+                                    const recommended = getRecommendedValues(item.level);
+                                    if (recommended.exists) {
+                                      onNewCard({
+                                        type: CardType.MONSTER,
+                                        level: item.level,
+                                        levelsGained: recommended.levelsGained,
+                                        gold: `${recommended.treasuresGained} Trésor${recommended.treasuresGained > 1 ? 's' : ''}`,
+                                        title: '', // Reset title to force user input
+                                        description: '',
+                                        badStuff: ''
+                                      });
+                                    } else {
+                                      onNewCard({ type: CardType.MONSTER });
+                                    }
+                                  }}
+                                />
+                              );
+                            }
+                            // Regular card
+                            return (
+                              <CardThumbnail
+                                key={item.id}
+                                card={item}
+                                onClick={() => onSelectCard(item)}
+                                isSelected={item.id === selectedCardId}
+                              />
+                            );
+                          })}
                         </div>
                       </div>
                     </div>
@@ -506,7 +733,7 @@ const CardGallery: React.FC<CardGalleryProps> = ({
                 </section>
               );
             })}
-          </div>
+          </div >
         )
       }
 
@@ -524,35 +751,37 @@ const CardGallery: React.FC<CardGalleryProps> = ({
       }
 
       {/* Batch Export Renderer and Overlay */}
-      {isExportingSelection && (
-        <>
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-            <div className="bg-white rounded-xl p-8 shadow-2xl max-w-sm w-full text-center">
-              <h3 className="text-xl font-bold text-gray-800 mb-4">Export en cours...</h3>
-              <div className="w-full bg-gray-200 rounded-full h-4 mb-2 overflow-hidden">
-                <div
-                  className="bg-green-600 h-full transition-all duration-300 ease-out"
-                  style={{ width: `${(exportProgress.current / (exportProgress.total || 1)) * 100}%` }}
-                />
+      {
+        isExportingSelection && (
+          <>
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+              <div className="bg-white rounded-xl p-8 shadow-2xl max-w-sm w-full text-center">
+                <h3 className="text-xl font-bold text-gray-800 mb-4">Export en cours...</h3>
+                <div className="w-full bg-gray-200 rounded-full h-4 mb-2 overflow-hidden">
+                  <div
+                    className="bg-green-600 h-full transition-all duration-300 ease-out"
+                    style={{ width: `${(exportProgress.current / (exportProgress.total || 1)) * 100}%` }}
+                  />
+                </div>
+                <div className="flex justify-between text-sm text-gray-600">
+                  <span>Carte {exportProgress.current} / {exportProgress.total}</span>
+                  <span>{Math.round((exportProgress.current / (exportProgress.total || 1)) * 100)}%</span>
+                </div>
+                <p className="text-xs text-gray-400 mt-4">Veuillez patienter pendant la génération du fichier ZIP.</p>
               </div>
-              <div className="flex justify-between text-sm text-gray-600">
-                <span>Carte {exportProgress.current} / {exportProgress.total}</span>
-                <span>{Math.round((exportProgress.current / (exportProgress.total || 1)) * 100)}%</span>
-              </div>
-              <p className="text-xs text-gray-400 mt-4">Veuillez patienter pendant la génération du fichier ZIP.</p>
             </div>
-          </div>
 
-          <BatchExportRenderer
-            cards={filteredCards.filter(c => {
-              if (exportMode === 'all') return true;
-              return getCardCategory(c) === exportMode;
-            })}
-            onComplete={() => setIsExportingSelection(false)}
-            onProgress={(current, total) => setExportProgress({ current, total })}
-          />
-        </>
-      )}
+            <BatchExportRenderer
+              cards={filteredCards.filter(c => {
+                if (exportMode === 'all') return true;
+                return getCardCategory(c) === exportMode;
+              })}
+              onComplete={() => setIsExportingSelection(false)}
+              onProgress={(current, total) => setExportProgress({ current, total })}
+            />
+          </>
+        )
+      }
     </div >
   );
 };

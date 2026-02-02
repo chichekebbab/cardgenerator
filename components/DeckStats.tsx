@@ -1,29 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { CardData, CardType } from '../types';
-import { LEVEL_RANGES, getTargetCountForRange } from '../utils/balancingConfig';
+import { LEVEL_RANGES, getTargetCountForRange, getAllTargets, DEFAULT_TOTAL } from '../utils/balancingConfig';
 
 interface DeckStatsProps {
   cards: CardData[];
+  targetTotal?: number;
+  onTargetTotalChange?: (newTarget: number) => void;
 }
 
 // Valeurs de base par défaut (total: 350 cartes)
-const BASE_TARGETS = {
-  // DONJON (Total: 242)
-  RACE: 33,
-  CLASS: 23,
-  DUNGEON_TRAP: 21,
-  FAITHFUL_SERVANT: 10,
-  DUNGEON_BONUS: 16,
-  LEVEL_UP: 14,
-  CURSE: 37,
-  MONSTER: 88,
 
-  // TRÉSOR (Total: 108)
-  TREASURE_TRAP: 6,
-  ITEM: 102,
-};
-
-const DEFAULT_TOTAL = 350;
 
 // Fonction utilitaire pour la couleur de progression
 const getStatusColor = (current: number, target: number, isDark: boolean = false) => {
@@ -57,28 +43,25 @@ const StatRow: React.FC<{
   );
 };
 
-const DeckStats: React.FC<DeckStatsProps> = ({ cards }) => {
-  // État pour le nombre total cible (modifiable par l'utilisateur)
-  const [targetTotal, setTargetTotal] = useState<number>(DEFAULT_TOTAL);
+const DeckStats: React.FC<DeckStatsProps> = ({ cards, targetTotal = 350, onTargetTotalChange }) => {
+  // État local pour l'édition temporaire
   const [isEditingTarget, setIsEditingTarget] = useState(false);
-  const [tempTarget, setTempTarget] = useState<string>(String(DEFAULT_TOTAL));
+  const [tempTarget, setTempTarget] = useState<string>(String(targetTotal));
+
+  // Update temp target when prop changes
+  useEffect(() => {
+    if (!isEditingTarget) {
+      setTempTarget(String(targetTotal));
+    }
+  }, [targetTotal, isEditingTarget]);
 
   // État pour les sections repliables
   const [isDungeonExpanded, setIsDungeonExpanded] = useState(false);
   const [isTreasureExpanded, setIsTreasureExpanded] = useState(false);
   const [isMonsterLevelExpanded, setIsMonsterLevelExpanded] = useState(false);
 
-  // Charger les préférences depuis localStorage
+  // Charger les préférences d'affichage depuis localStorage
   useEffect(() => {
-    const savedTarget = localStorage.getItem('deckstats_target_total');
-    if (savedTarget) {
-      const parsed = parseInt(savedTarget, 10);
-      if (!isNaN(parsed) && parsed > 0) {
-        setTargetTotal(parsed);
-        setTempTarget(String(parsed));
-      }
-    }
-
     const savedDungeonExpanded = localStorage.getItem('deckstats_dungeon_expanded');
     if (savedDungeonExpanded !== null) {
       setIsDungeonExpanded(savedDungeonExpanded === 'true');
@@ -95,10 +78,11 @@ const DeckStats: React.FC<DeckStatsProps> = ({ cards }) => {
     }
   }, []);
 
-  // Sauvegarder les préférences
+  // Sauvegarder le nouveau total via le callback parent
   const saveTargetTotal = (newTarget: number) => {
-    setTargetTotal(newTarget);
-    localStorage.setItem('deckstats_target_total', String(newTarget));
+    if (onTargetTotalChange) {
+      onTargetTotalChange(newTarget);
+    }
   };
 
   const toggleDungeonExpanded = () => {
@@ -119,22 +103,8 @@ const DeckStats: React.FC<DeckStatsProps> = ({ cards }) => {
     localStorage.setItem('deckstats_monster_level_expanded', String(newValue));
   };
 
-  // Calculer le ratio pour ajuster les cibles
-  const ratio = targetTotal / DEFAULT_TOTAL;
-
-  // Calculer les cibles ajustées (arrondi supérieur)
-  const adjustedTargets = {
-    RACE: Math.ceil(BASE_TARGETS.RACE * ratio),
-    CLASS: Math.ceil(BASE_TARGETS.CLASS * ratio),
-    DUNGEON_TRAP: Math.ceil(BASE_TARGETS.DUNGEON_TRAP * ratio),
-    FAITHFUL_SERVANT: Math.ceil(BASE_TARGETS.FAITHFUL_SERVANT * ratio),
-    DUNGEON_BONUS: Math.ceil(BASE_TARGETS.DUNGEON_BONUS * ratio),
-    LEVEL_UP: Math.ceil(BASE_TARGETS.LEVEL_UP * ratio),
-    CURSE: Math.ceil(BASE_TARGETS.CURSE * ratio),
-    MONSTER: Math.ceil(BASE_TARGETS.MONSTER * ratio),
-    TREASURE_TRAP: Math.ceil(BASE_TARGETS.TREASURE_TRAP * ratio),
-    ITEM: Math.ceil(BASE_TARGETS.ITEM * ratio),
-  };
+  // Calculer les cibles ajustées
+  const adjustedTargets = getAllTargets(targetTotal);
 
   // --- CALCULS DONJON ---
   const raceCards = cards.filter(c => c.type === CardType.RACE);

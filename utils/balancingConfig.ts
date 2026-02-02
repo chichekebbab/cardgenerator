@@ -13,26 +13,26 @@ export interface MonsterLevelBalance {
 
 // Table de référence basée sur l'image fournie
 export const MONSTER_BALANCE_REFERENCE: MonsterLevelBalance[] = [
-    { level: 1, cardCount: 11, treasuresGained: 1, levelsGained: 1 },
-    { level: 2, cardCount: 14, treasuresGained: 1, levelsGained: 1 },
-    { level: 3, cardCount: 8, treasuresGained: 1, levelsGained: 1 },
-    { level: 4, cardCount: 12, treasuresGained: 2, levelsGained: 1 },
-    { level: 5, cardCount: 8, treasuresGained: 2, levelsGained: 1 },
-    { level: 6, cardCount: 9, treasuresGained: 2, levelsGained: 1 },
-    { level: 7, cardCount: 6, treasuresGained: 2, levelsGained: 1 },
-    { level: 8, cardCount: 7, treasuresGained: 2, levelsGained: 1 },
-    { level: 9, cardCount: 7, treasuresGained: 3, levelsGained: 1 },
-    { level: 10, cardCount: 7, treasuresGained: 3, levelsGained: 1 },
-    { level: 11, cardCount: 5, treasuresGained: 3, levelsGained: 1 },
-    { level: 12, cardCount: 7, treasuresGained: 3, levelsGained: 1 },
-    { level: 13, cardCount: 5, treasuresGained: 3, levelsGained: 1 },
-    { level: 14, cardCount: 8, treasuresGained: 4, levelsGained: 1 },
-    { level: 15, cardCount: 5, treasuresGained: 4, levelsGained: 2 },
-    { level: 16, cardCount: 6, treasuresGained: 4, levelsGained: 2 },
-    { level: 17, cardCount: 4, treasuresGained: 4, levelsGained: 2 },
-    { level: 18, cardCount: 5, treasuresGained: 5, levelsGained: 2 },
-    { level: 19, cardCount: 3, treasuresGained: 5, levelsGained: 2 },
-    { level: 20, cardCount: 4, treasuresGained: 5, levelsGained: 2 },
+    { level: 1, cardCount: 7, treasuresGained: 1, levelsGained: 1 },
+    { level: 2, cardCount: 9, treasuresGained: 1, levelsGained: 1 },
+    { level: 3, cardCount: 5, treasuresGained: 1, levelsGained: 1 },
+    { level: 4, cardCount: 7, treasuresGained: 2, levelsGained: 1 },
+    { level: 5, cardCount: 5, treasuresGained: 2, levelsGained: 1 },
+    { level: 6, cardCount: 6, treasuresGained: 2, levelsGained: 1 },
+    { level: 7, cardCount: 4, treasuresGained: 2, levelsGained: 1 },
+    { level: 8, cardCount: 4, treasuresGained: 2, levelsGained: 1 },
+    { level: 9, cardCount: 4, treasuresGained: 3, levelsGained: 1 },
+    { level: 10, cardCount: 4, treasuresGained: 3, levelsGained: 1 },
+    { level: 11, cardCount: 3, treasuresGained: 3, levelsGained: 1 },
+    { level: 12, cardCount: 4, treasuresGained: 3, levelsGained: 1 },
+    { level: 13, cardCount: 3, treasuresGained: 3, levelsGained: 1 },
+    { level: 14, cardCount: 5, treasuresGained: 4, levelsGained: 1 },
+    { level: 15, cardCount: 3, treasuresGained: 4, levelsGained: 2 },
+    { level: 16, cardCount: 4, treasuresGained: 4, levelsGained: 2 },
+    { level: 17, cardCount: 2, treasuresGained: 4, levelsGained: 2 },
+    { level: 18, cardCount: 3, treasuresGained: 5, levelsGained: 2 },
+    { level: 19, cardCount: 2, treasuresGained: 5, levelsGained: 2 },
+    { level: 20, cardCount: 2, treasuresGained: 5, levelsGained: 2 },
 ];
 
 // Groupes de niveaux pour l'affichage dans le dashboard
@@ -152,4 +152,54 @@ export const getTargetCountForRange = (range: LevelRange, deckSize: number): num
         total += getTargetCountForLevel(level, deckSize);
     }
     return total;
+};
+
+/**
+ * Calculer le nombre total de monstres cible pour un deck de taille donnée
+ */
+export const getTotalMonsterTarget = (deckSize: number): number => {
+    let total = 0;
+    for (const entry of MONSTER_BALANCE_REFERENCE) {
+        total += getTargetCountForLevel(entry.level, deckSize);
+    }
+    return total;
+};
+
+// Valeurs de base par défaut (total: 350 cartes)
+export const BASE_TARGETS = {
+    // DONJON (Total: 242)
+    RACE: 33,
+    CLASS: 23,
+    DUNGEON_TRAP: 21,
+    FAITHFUL_SERVANT: 10,
+    DUNGEON_BONUS: 16,
+    LEVEL_UP: 14,
+    CURSE: 37,
+    MONSTER: 88,
+
+    // TRÉSOR (Total: 108)
+    TREASURE_TRAP: 6,
+    ITEM: 102,
+};
+
+export const DEFAULT_TOTAL = 350;
+
+/**
+ * Calculer les cibles ajustées pour toutes les catégories
+ */
+export const getAllTargets = (targetTotal: number) => {
+    const ratio = targetTotal / DEFAULT_TOTAL;
+
+    return {
+        RACE: Math.ceil(BASE_TARGETS.RACE * ratio),
+        CLASS: Math.ceil(BASE_TARGETS.CLASS * ratio),
+        DUNGEON_TRAP: Math.ceil(BASE_TARGETS.DUNGEON_TRAP * ratio),
+        FAITHFUL_SERVANT: Math.ceil(BASE_TARGETS.FAITHFUL_SERVANT * ratio),
+        DUNGEON_BONUS: Math.ceil(BASE_TARGETS.DUNGEON_BONUS * ratio),
+        LEVEL_UP: Math.ceil(BASE_TARGETS.LEVEL_UP * ratio),
+        CURSE: Math.ceil(BASE_TARGETS.CURSE * ratio),
+        MONSTER: getTotalMonsterTarget(targetTotal),
+        TREASURE_TRAP: Math.ceil(BASE_TARGETS.TREASURE_TRAP * ratio),
+        ITEM: Math.ceil(BASE_TARGETS.ITEM * ratio),
+    };
 };

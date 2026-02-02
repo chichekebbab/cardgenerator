@@ -185,7 +185,10 @@ const App: React.FC = () => {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false); // Track if current card has changes
   const { showNotification } = useNotification();
 
-  // Charger l'URL du script et la clé API depuis le localStorage
+  // State for deck target total (lifted from DeckStats)
+  const [targetTotal, setTargetTotal] = useState<number>(350);
+
+  // Charger les préférences depuis localStorage
   useEffect(() => {
     const savedUrl = localStorage.getItem("google_script_url");
     if (savedUrl) {
@@ -202,7 +205,20 @@ const App: React.FC = () => {
     if (savedGeminiKey) {
       setGeminiApiKey(savedGeminiKey);
     }
+
+    const savedTarget = localStorage.getItem('deckstats_target_total');
+    if (savedTarget) {
+      const parsed = parseInt(savedTarget, 10);
+      if (!isNaN(parsed) && parsed > 0) {
+        setTargetTotal(parsed);
+      }
+    }
   }, []);
+
+  const handleTargetTotalChange = (newTarget: number) => {
+    setTargetTotal(newTarget);
+    localStorage.setItem('deckstats_target_total', String(newTarget));
+  };
 
   const loadSavedCards = async (url: string) => {
     if (!url) return;
@@ -356,8 +372,9 @@ const App: React.FC = () => {
     showNotification("Carte dupliquée ! Vous éditez maintenant la copie.", 'success');
   };
 
-  const handleNewCard = () => {
-    setCardData({ ...INITIAL_CARD_DATA, id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString() });
+  const handleNewCard = (initialData?: Partial<CardData>) => {
+    const baseCard = { ...INITIAL_CARD_DATA, id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString() };
+    setCardData(initialData ? { ...baseCard, ...initialData } : baseCard);
     setActiveView('editor'); // Switch to editor when creating new card
     setHasUnsavedChanges(false); // New card has no changes yet
   };
@@ -813,7 +830,11 @@ const App: React.FC = () => {
 
                   {/* Deck Statistics Panel */}
                   <div className="border-b border-amber-300 max-h-[40%] overflow-hidden flex flex-col shrink-0">
-                    <DeckStats cards={savedCards} />
+                    <DeckStats
+                      cards={savedCards}
+                      targetTotal={targetTotal}
+                      onTargetTotalChange={handleTargetTotalChange}
+                    />
                   </div>
 
                   {/* Saved Cards List */}
@@ -899,6 +920,7 @@ const App: React.FC = () => {
             onSelectCard={handleSelectCard}
             onNewCard={handleNewCard}
             isLoading={isLoadingList}
+            targetTotal={targetTotal}
             selectedCardId={cardData.id}
           />
         ) : (

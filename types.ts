@@ -43,6 +43,14 @@ export interface CardData {
   internalComment: string;
 }
 
+export interface PlaceholderCardData {
+  level: number;
+  type: CardType;
+  targetTreasures: number;
+  targetLevelsGained: number;
+  isPlaceholder: true;
+}
+
 export const INITIAL_CARD_DATA: CardData = {
   id: '', // Sera généré à l'initialisation
   title: 'Horreur Indicible',
