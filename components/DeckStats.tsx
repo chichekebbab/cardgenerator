@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CardData, CardType } from '../types';
+import { LEVEL_RANGES, getTargetCountForRange } from '../utils/balancingConfig';
 
 interface DeckStatsProps {
   cards: CardData[];
@@ -65,6 +66,7 @@ const DeckStats: React.FC<DeckStatsProps> = ({ cards }) => {
   // État pour les sections repliables
   const [isDungeonExpanded, setIsDungeonExpanded] = useState(false);
   const [isTreasureExpanded, setIsTreasureExpanded] = useState(false);
+  const [isMonsterLevelExpanded, setIsMonsterLevelExpanded] = useState(false);
 
   // Charger les préférences depuis localStorage
   useEffect(() => {
@@ -86,6 +88,11 @@ const DeckStats: React.FC<DeckStatsProps> = ({ cards }) => {
     if (savedTreasureExpanded !== null) {
       setIsTreasureExpanded(savedTreasureExpanded === 'true');
     }
+
+    const savedMonsterLevelExpanded = localStorage.getItem('deckstats_monster_level_expanded');
+    if (savedMonsterLevelExpanded !== null) {
+      setIsMonsterLevelExpanded(savedMonsterLevelExpanded === 'true');
+    }
   }, []);
 
   // Sauvegarder les préférences
@@ -104,6 +111,12 @@ const DeckStats: React.FC<DeckStatsProps> = ({ cards }) => {
     const newValue = !isTreasureExpanded;
     setIsTreasureExpanded(newValue);
     localStorage.setItem('deckstats_treasure_expanded', String(newValue));
+  };
+
+  const toggleMonsterLevelExpanded = () => {
+    const newValue = !isMonsterLevelExpanded;
+    setIsMonsterLevelExpanded(newValue);
+    localStorage.setItem('deckstats_monster_level_expanded', String(newValue));
   };
 
   // Calculer le ratio pour ajuster les cibles
@@ -350,6 +363,46 @@ const DeckStats: React.FC<DeckStatsProps> = ({ cards }) => {
               <StatRow label="Niveau +" current={levelUpCount} validated={levelUpValidated} target={adjustedTargets.LEVEL_UP} />
               <StatRow label="Malédic." current={curseCount} validated={curseValidated} target={adjustedTargets.CURSE} />
               <StatRow label="Monstres" current={monsterCount} validated={monsterValidated} target={adjustedTargets.MONSTER} />
+
+              {/* Monster Level Distribution Subsection */}
+              <div className="mt-2 border-t border-gray-200 pt-2">
+                <button
+                  onClick={toggleMonsterLevelExpanded}
+                  className="w-full flex items-center justify-between text-xs hover:bg-stone-50 transition-colors py-1.5 px-2 rounded"
+                >
+                  <span className="text-gray-600 font-medium flex items-center gap-1">
+                    <span className="text-[10px]">📊</span> Répartition par niveau
+                  </span>
+                  <span className="text-[10px] transition-transform duration-200" style={{ transform: isMonsterLevelExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                    ▼
+                  </span>
+                </button>
+
+                {isMonsterLevelExpanded && (
+                  <div className="mt-1 space-y-1 pl-2">
+                    {LEVEL_RANGES.map(range => {
+                      // Count monsters in this level range
+                      const monstersInRange = monsterCards.filter(c => {
+                        const level = typeof c.level === 'number' ? c.level : 0;
+                        return level >= range.min && level <= range.max;
+                      });
+                      const currentCount = monstersInRange.length;
+                      const validatedCount = monstersInRange.filter(c => c.isValidated).length;
+                      const targetCount = getTargetCountForRange(range, targetTotal);
+
+                      return (
+                        <StatRow
+                          key={range.label}
+                          label={`Niv. ${range.label}`}
+                          current={currentCount}
+                          validated={validatedCount}
+                          target={targetCount}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>

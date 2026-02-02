@@ -97,14 +97,6 @@ export const generateCardSuggestion = async (concept: string, apiKey?: string): 
     const ai = getAiInstance(apiKey);
     const isRandom = !concept || concept.trim() === '';
 
-    // Utilisation de gemini-2.0-flash pour une meilleure qualité de texte
-    // Note: getGenerativeModel logic might differ slightly in @google/genai vs google-generative-ai
-    // The current file uses `ai.models.generateContent` which suggests a specific client structure.
-    // Let's check how `getAiInstance` returns the client. 
-    // It returns `new GoogleGenAI({ apiKey })`. 
-    // According to new SDK, we might need to verify the method to call a specific model.
-    // However, looking at line 34: `ai.models.generateContent`.
-
     const prompt = `
       Tu es un assistant créatif pour le jeu de cartes Munchkin.
       Ta tâche est de créer une nouvelle carte de jeu ${isRandom ? 'aléatoire et drôle' : 'basée sur le concept fourni'}.
@@ -123,15 +115,24 @@ export const generateCardSuggestion = async (concept: string, apiKey?: string): 
         "bonus": string (ex: "+3" ou "+2 contre les Elfes" ou "1"),
         "description": "Texte d'effet principal",
         "badStuff": "Incident Fâcheux (si Monstre, vide sinon)",
-        "gold": "Valeur (ex: '300 Pièces d'Or' ou '2 Trésors', le nombre de trésors varie entre 1 et 5)",
+        "gold": "Valeur (ex: '300 Pièces d'Or' ou '2 trésors')",
         "imagePrompt": "Description visuelle détaillée pour le dessinateur (style John Kovalic), centrée sur un élément unique, sans décor complexe.",
-        "levelsGained": number (si Monstre, généralement 1, parfois 2 pour les gros monstres),
+        "levelsGained": number (si Monstre, dépend du niveau selon table ci-dessous),
         "itemSlot": "Usage Unique" | "1 Main" | "2 Mains" | "Armure" | "Couvre-chef" | "Chaussures" | "NoSlot" | "Monture" (si Objet),
         "restrictions": "Restrictions d'usage (ex: Elfes uniquement)",
         "isBig": boolean (si Objet)
       }
 
-      IMPORTANT: Varie les niveaux des monstres (ne donne pas toujours la même valeur) et les récompenses.
+      IMPORTANT: Pour les MONSTRES, respecte STRICTEMENT l'équilibrage suivant selon le niveau:
+      - Niveau 1-3: 1 trésor, 1 niveau gagné
+      - Niveau 4-8: 2 trésors, 1 niveau gagné
+      - Niveau 9-13: 3 trésors, 1 niveau gagné
+      - Niveau 14: 4 trésors, 1 niveau gagné
+      - Niveau 15-17: 4 trésors, 2 niveaux gagnés
+      - Niveau 18-20: 5 trésors, 2 niveaux gagnés
+      
+      IMPORTANT: Écris toujours les trésors au format "X trésors" (ou "1 trésor" au singulier).
+      IMPORTANT: Varie les niveaux des monstres (ne donne pas toujours la même valeur).
       IMPORTANT: Ne génère JAMAIS de champ "id" ou "uuid". L'identifiant est géré par le système.
       Réponds uniquement avec le JSON.
     `;

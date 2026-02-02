@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CardData, CardType, CardLayout } from '../types';
 import { generateCardArt, generateCardSuggestion } from '../services/geminiService';
 import { removeBackground, removeBackgroundFromUrl, hasDefaultRemoveBgKey } from '../services/removeBgService';
 import { useNotification } from './NotificationContext';
+import { getRecommendedValues, formatTreasures, validateMonsterBalance } from '../utils/balancingConfig';
 
 interface CardFormProps {
   cardData: CardData;
@@ -207,6 +208,23 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
     }
   };
 
+  // Auto-fill monster balancing fields when level changes
+  useEffect(() => {
+    if (cardData.type === CardType.MONSTER && typeof cardData.level === 'number' && cardData.level > 0) {
+      const recommended = getRecommendedValues(cardData.level);
+
+      // Auto-fill levelsGained if empty or if it's a new card
+      if (cardData.levelsGained === '' || cardData.levelsGained === null) {
+        handleChange('levelsGained', recommended.levelsGained);
+      }
+
+      // Auto-fill gold (treasures) if empty or if it's a new card
+      if (!cardData.gold || cardData.gold.trim() === '') {
+        handleChange('gold', formatTreasures(recommended.treasuresGained));
+      }
+    }
+  }, [cardData.level, cardData.type]); // Only run when level or type changes
+
   return (
     <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200 h-full overflow-y-auto">
       <div className="flex items-center justify-between gap-2 mb-6 overflow-x-auto pb-1">
@@ -371,13 +389,34 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
           {cardData.type !== CardType.FAITHFUL_SERVANT && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Val/Trésors</label>
-              <input
-                type="text"
-                value={cardData.gold || ''}
-                onChange={(e) => handleChange('gold', e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-                placeholder={cardData.type === CardType.MONSTER ? "ex: 2 Trésors" : "ex: 500 Pièces d'Or"}
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  value={cardData.gold || ''}
+                  onChange={(e) => handleChange('gold', e.target.value)}
+                  className={`w-full p-2 border rounded focus:ring-2 focus:ring-amber-500 focus:border-amber-500 ${cardData.type === CardType.MONSTER && typeof cardData.level === 'number' && cardData.level > 0
+                    ? (() => {
+                      const validation = validateMonsterBalance(cardData.level, cardData.gold || '', cardData.levelsGained);
+                      const hasGoldWarning = validation.warnings.some(w => w.includes('Trésors'));
+                      return hasGoldWarning ? 'border-yellow-400 bg-yellow-50' : 'border-gray-300';
+                    })()
+                    : 'border-gray-300'
+                    }`}
+                  placeholder={cardData.type === CardType.MONSTER ? "ex: 2 trésors" : "ex: 500 Pièces d'Or"}
+                />
+                {cardData.type === CardType.MONSTER && typeof cardData.level === 'number' && cardData.level > 0 && (() => {
+                  const validation = validateMonsterBalance(cardData.level, cardData.gold || '', cardData.levelsGained);
+                  const goldWarning = validation.warnings.find(w => w.includes('Trésors'));
+                  return goldWarning ? (
+                    <div
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-yellow-600 cursor-help"
+                      title={goldWarning}
+                    >
+                      ⚠️
+                    </div>
+                  ) : null;
+                })()}
+              </div>
             </div>
           )}
         </div>
@@ -389,14 +428,35 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Niveaux Gagnés</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={cardData.levelsGained || ''}
-                  onChange={(e) => handleChange('levelsGained', parseInt(e.target.value) || '')}
-                  className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-green-500"
-                  placeholder="1"
-                />
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="1"
+                    value={cardData.levelsGained || ''}
+                    onChange={(e) => handleChange('levelsGained', parseInt(e.target.value) || '')}
+                    className={`w-full p-2 border rounded text-sm focus:ring-1 focus:ring-green-500 ${typeof cardData.level === 'number' && cardData.level > 0
+                        ? (() => {
+                          const validation = validateMonsterBalance(cardData.level, cardData.gold || '', cardData.levelsGained);
+                          const hasLevelWarning = validation.warnings.some(w => w.includes('Niveaux'));
+                          return hasLevelWarning ? 'border-yellow-400 bg-yellow-50' : 'border-gray-300';
+                        })()
+                        : 'border-gray-300'
+                      }`}
+                    placeholder="1"
+                  />
+                  {typeof cardData.level === 'number' && cardData.level > 0 && (() => {
+                    const validation = validateMonsterBalance(cardData.level, cardData.gold || '', cardData.levelsGained);
+                    const levelWarning = validation.warnings.find(w => w.includes('Niveaux'));
+                    return levelWarning ? (
+                      <div
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-yellow-600 cursor-help"
+                        title={levelWarning}
+                      >
+                        ⚠️
+                      </div>
+                    ) : null;
+                  })()}
+                </div>
               </div>
             </div>
           </div>
