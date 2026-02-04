@@ -826,50 +826,12 @@ const App: React.FC = () => {
 
               {/* Left: Stats & Saved Cards (3 cols) */}
               <div className="lg:col-span-3 order-3 lg:order-1">
-                <div className="bg-amber-100 rounded-lg shadow border border-amber-200 overflow-hidden sticky top-32 max-h-[calc(100vh-160px)] flex flex-col">
-
-                  {/* Deck Statistics Panel */}
-                  <div className="border-b border-amber-300 max-h-[40%] overflow-hidden flex flex-col shrink-0">
-                    <DeckStats
-                      cards={savedCards}
-                      targetTotal={targetTotal}
-                      onTargetTotalChange={handleTargetTotalChange}
-                    />
-                  </div>
-
-                  {/* Saved Cards List */}
-                  <div className="flex flex-col flex-grow overflow-hidden">
-                    <div className="bg-amber-800 text-amber-50 p-2 text-center text-sm font-bold uppercase tracking-wide shrink-0 flex items-center justify-between px-3">
-                      <span>Cartes ({savedCards.length})</span>
-                      <button
-                        onClick={() => setActiveView('gallery')}
-                        className="text-xs bg-amber-700 hover:bg-amber-600 px-2 py-0.5 rounded transition-colors"
-                        title="Voir toutes les cartes"
-                      >
-                        Voir tout →
-                      </button>
-                    </div>
-                    <div className="overflow-y-auto p-2 space-y-2 flex-grow scrollbar-thin scrollbar-thumb-amber-600 bg-amber-50/50">
-                      {isLoadingList ? (
-                        <div className="text-center p-4 text-gray-500 text-xs">Chargement...</div>
-                      ) : savedCards.length === 0 ? (
-                        <div className="text-center p-4 text-gray-500 text-xs italic">
-                          {configError ? "Erreur de connexion." : "Aucune carte trouvée."}
-                        </div>
-                      ) : (
-                        savedCards.map(c => (
-                          <button
-                            key={c.id}
-                            onClick={() => handleSelectCard(c)}
-                            className={`w-full text-left p-2 rounded text-xs border transition-all ${cardData.id === c.id ? 'bg-amber-200 border-amber-400 font-bold' : 'bg-white border-amber-100 hover:bg-amber-50'}`}
-                          >
-                            <div className="truncate">{c.title || "Sans Titre"}</div>
-                            <div className="text-[10px] text-gray-500 opacity-80">{c.type}</div>
-                          </button>
-                        ))
-                      )}
-                    </div>
-                  </div>
+                <div className="bg-amber-100 rounded-lg shadow border border-amber-200 overflow-hidden sticky top-32 h-[calc(100vh-160px)]">
+                  <DeckStats
+                    cards={savedCards}
+                    targetTotal={targetTotal}
+                    onTargetTotalChange={handleTargetTotalChange}
+                  />
                 </div>
               </div>
 

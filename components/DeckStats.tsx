@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CardData, CardType } from '../types';
-import { LEVEL_RANGES, getTargetCountForRange, getAllTargets, DEFAULT_TOTAL } from '../utils/balancingConfig';
+import { getTargetCountForLevel, getAllTargets, DEFAULT_TOTAL } from '../utils/balancingConfig';
 
 interface DeckStatsProps {
   cards: CardData[];
@@ -204,7 +204,7 @@ const DeckStats: React.FC<DeckStatsProps> = ({ cards, targetTotal = 350, onTarge
         📊 Tableau de Bord
       </div>
 
-      <div className="overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-stone-400 space-y-2">
+      <div className="flex-1 min-h-0 overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-stone-400 space-y-2">
 
         {/* EDITABLE TARGET TOTAL - Compact */}
         <div className="bg-blue-50 border border-blue-200 rounded p-2">
@@ -350,20 +350,20 @@ const DeckStats: React.FC<DeckStatsProps> = ({ cards, targetTotal = 350, onTarge
 
                 {isMonsterLevelExpanded && (
                   <div className="mt-1 space-y-1 pl-2">
-                    {LEVEL_RANGES.map(range => {
-                      // Count monsters in this level range
-                      const monstersInRange = monsterCards.filter(c => {
-                        const level = typeof c.level === 'number' ? c.level : 0;
-                        return level >= range.min && level <= range.max;
+                    {Array.from({ length: 20 }, (_, i) => i + 1).map(level => {
+                      // Count monsters at this specific level
+                      const monstersAtLevel = monsterCards.filter(c => {
+                        const cLevel = typeof c.level === 'number' ? c.level : 0;
+                        return cLevel === level;
                       });
-                      const currentCount = monstersInRange.length;
-                      const validatedCount = monstersInRange.filter(c => c.isValidated).length;
-                      const targetCount = getTargetCountForRange(range, targetTotal);
+                      const currentCount = monstersAtLevel.length;
+                      const validatedCount = monstersAtLevel.filter(c => c.isValidated).length;
+                      const targetCount = getTargetCountForLevel(level, targetTotal);
 
                       return (
                         <StatRow
-                          key={range.label}
-                          label={`Niv. ${range.label}`}
+                          key={level}
+                          label={`Niv. ${level}`}
                           current={currentCount}
                           validated={validatedCount}
                           target={targetCount}

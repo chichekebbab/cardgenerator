@@ -263,7 +263,7 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
               <span className="text-base leading-none">🗑️</span>
             </button>
             <button
-              onClick={onSave}
+              onClick={() => onSave()}
               disabled={isSaving || !hasUnsavedChanges}
               className={`h-[34px] px-3 text-sm font-bold rounded shadow transition-all flex items-center gap-1.5 whitespace-nowrap ${hasUnsavedChanges
                 ? 'text-white bg-green-600 hover:bg-green-700 cursor-pointer'

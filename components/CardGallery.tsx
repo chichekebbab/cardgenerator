@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import ReactDOM from 'react-dom';
 import { CardData, CardType, PlaceholderCardData } from '../types';
 import CardThumbnail from './CardThumbnail';
 import BatchExportRenderer from './BatchExportRenderer';
@@ -80,6 +81,7 @@ const CardGallery: React.FC<CardGalleryProps> = ({
   const [sortByLevel, setSortByLevel] = useState(true);
   const [showMissingCards, setShowMissingCards] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
+  const [monsterTooltip, setMonsterTooltip] = useState<{ visible: boolean; x: number; y: number }>({ visible: false, x: 0, y: 0 });
 
   // Filter cards based on search query and filters
   const filteredCards = useMemo(() => {
@@ -643,19 +645,28 @@ const CardGallery: React.FC<CardGalleryProps> = ({
               return (
                 <section
                   key={type}
-                  className={`rounded-xl overflow-hidden border-2 transition-all duration-300 ${style.border} ${style.bg} shadow-sm hover:shadow-md`}
+                  className={`rounded-xl border-2 transition-all duration-300 ${style.border} ${style.bg} shadow-sm hover:shadow-md ${type === CardType.MONSTER ? 'overflow-visible' : 'overflow-hidden'}`}
                 >
                   {/* Section Header */}
                   <button
                     onClick={() => toggleSection(type)}
-                    className={`w-full flex items-center justify-between px-4 py-3 ${style.header} text-white font-bold text-lg transition-colors hover:brightness-110`}
+                    className={`w-full flex items-center justify-between px-4 py-3 ${style.header} text-white font-bold text-lg transition-colors hover:brightness-110 ${type === CardType.MONSTER ? 'overflow-visible' : ''}`}
                   >
                     <div className="flex items-center gap-3">
                       <span className="text-2xl">{style.icon}</span>
                       <span>{type}</span>
                       {/* Unified Counter Display for All Types */}
                       <div className="flex items-center gap-3 ml-2">
-                        <div className="flex flex-col gap-0.5 w-32 sm:w-48">
+                        <div
+                          className="flex flex-col gap-0.5 w-32 sm:w-48 cursor-help"
+                          onMouseEnter={(e) => {
+                            if (type === CardType.MONSTER) {
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              setMonsterTooltip({ visible: true, x: rect.left + rect.width / 2, y: rect.bottom + 8 });
+                            }
+                          }}
+                          onMouseLeave={() => setMonsterTooltip({ visible: false, x: 0, y: 0 })}
+                        >
                           <div className="flex justify-between text-xs text-white/90 font-medium px-0.5">
                             <span>Progression (Validées)</span>
                             <span>{validatedCount}/{globalTargetCount}</span>
@@ -782,6 +793,51 @@ const CardGallery: React.FC<CardGalleryProps> = ({
           </>
         )
       }
+      {/* Monster Level Distribution Tooltip - Rendered via Portal */}
+      {monsterTooltip.visible && ReactDOM.createPortal(
+        <div
+          className="fixed z-[99999] pointer-events-none"
+          style={{ left: monsterTooltip.x, top: monsterTooltip.y, transform: 'translateX(-50%)' }}
+        >
+          <div className="bg-gray-900 text-white text-xs rounded-lg shadow-2xl p-3 w-[280px] border border-gray-700">
+            <div className="font-bold mb-2 text-center border-b border-gray-700 pb-2">
+              📊 Répartition par niveau
+            </div>
+            <div className="space-y-0.5">
+              {Array.from({ length: 20 }, (_, i) => i + 1).map(level => {
+                const monstersAtLevel = (cardsByType.get(CardType.MONSTER) || []).filter(c => {
+                  const cLevel = typeof c.level === 'number' ? c.level : 0;
+                  return cLevel === level;
+                });
+                const currentCount = monstersAtLevel.length;
+                const validatedCountAtLevel = monstersAtLevel.filter(c => c.isValidated).length;
+                const targetCount = getTargetCountForLevel(level, targetTotal);
+
+                // Color coding based on progress
+                const progressRatio = targetCount > 0 ? validatedCountAtLevel / targetCount : 0;
+                let statusColor = 'text-red-400';
+                if (progressRatio >= 1.0) statusColor = 'text-emerald-400';
+                else if (progressRatio >= 0.85) statusColor = 'text-green-400';
+                else if (progressRatio >= 0.5) statusColor = 'text-amber-400';
+
+                return (
+                  <div key={level} className="flex justify-between items-center py-0.5 px-1 hover:bg-gray-800 rounded">
+                    <span className="text-gray-300">Niv. {level}</span>
+                    <div className="flex items-center gap-1.5 font-mono">
+                      <span className={`${statusColor} font-bold`} title="Validées">✓{validatedCountAtLevel}</span>
+                      <span className="text-gray-500">/</span>
+                      <span className="text-gray-400 text-[10px]" title="Générées">{currentCount}</span>
+                      <span className="text-gray-500">/</span>
+                      <span className="text-gray-400" title="Cible">{targetCount}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div >
   );
 };
