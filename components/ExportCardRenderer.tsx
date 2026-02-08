@@ -180,17 +180,30 @@ const ExportCardRenderer = forwardRef<HTMLDivElement, ExportCardRendererProps>((
                     {data.type === CardType.ITEM && (
                         <div className="relative">
                             {data.isBig && (
-                                <span className="font-medieval font-bold text-[#682A22] whitespace-nowrap absolute bottom-full left-0"
+                                <span className="font-medieval font-bold text-[#682A22] whitespace-nowrap absolute bottom-full left-0 mb-[-0.2rem]"
                                     style={{ fontSize: '1.8rem' }}>
                                     Gros
                                 </span>
                             )}
-                            {data.itemSlot && data.itemSlot !== 'NoSlot' && data.itemSlot !== 'Amélioration' ? (
-                                <span className="font-medieval font-bold text-[#682A22] whitespace-nowrap block"
-                                    style={{ fontSize: '1.8rem' }}>
-                                    {data.itemSlot}
-                                </span>
-                            ) : <div style={{ height: '1.8rem' }} />}
+                            {data.itemSlot === 'Amélioration de Monture' ? (
+                                <>
+                                    <span className="font-medieval font-bold text-[#682A22] whitespace-nowrap absolute bottom-full left-0 mb-[-0.2rem]"
+                                        style={{ fontSize: '1.8rem' }}>
+                                        Amélioration
+                                    </span>
+                                    <span className="font-medieval font-bold text-[#682A22] whitespace-nowrap block"
+                                        style={{ fontSize: '1.8rem' }}>
+                                        de Monture
+                                    </span>
+                                </>
+                            ) : (
+                                data.itemSlot && data.itemSlot !== 'NoSlot' && data.itemSlot !== 'Amélioration' ? (
+                                    <span className="font-medieval font-bold text-[#682A22] whitespace-nowrap block"
+                                        style={{ fontSize: data.itemSlot.length > 15 ? '1.4rem' : '1.8rem' }}>
+                                        {data.itemSlot}
+                                    </span>
+                                ) : <div style={{ height: '1.8rem' }} />
+                            )}
                         </div>
                     )}
                 </div>

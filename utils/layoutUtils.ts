@@ -6,6 +6,7 @@ export const getLayoutFilename = (data: CardData): string => {
     if (data.type === CardType.CURSE) return 'layout_malediction.png';
     if (data.type === CardType.ITEM) {
         if (data.itemSlot === 'Amélioration') return 'layout_malediction.png';
+        if (data.itemSlot === 'Amélioration de Monture') return 'layout_equipement.png';
         if (data.itemSlot || data.isBig) return 'layout_equipement.png';
         return 'layout_item.png';
     }

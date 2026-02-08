@@ -130,6 +130,7 @@ const CardGallery: React.FC<CardGalleryProps> = ({
     '1 Main',
     '2 Mains',
     'Monture',
+    'Amélioration de Monture',
     'NoSlot',
     'Amélioration',
     '' // Empty string for one-shot items
@@ -607,7 +608,7 @@ const CardGallery: React.FC<CardGalleryProps> = ({
 
                             if (slotCards.length === 0) return null;
 
-                            const slotLabel = slot === '' ? 'Usage unique' : slot === 'NoSlot' ? 'Sans emplacement' : slot === 'Amélioration' ? 'Amélioration' : slot;
+                            const slotLabel = slot === '' ? 'Usage unique' : slot === 'NoSlot' ? 'Sans emplacement' : slot === 'Amélioration' ? 'Amélioration' : slot === 'Amélioration de Monture' ? 'Amélioration de Monture' : slot;
 
                             return (
                               <div key={slot} className="space-y-2">

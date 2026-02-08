@@ -102,6 +102,7 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data, index }) => {
         if (data.type === CardType.CURSE) return 'layout_malediction.png';
         if (data.type === CardType.ITEM) {
             if (data.itemSlot === 'Amélioration') return 'layout_malediction.png';
+            if (data.itemSlot === 'Amélioration de Monture') return 'layout_equipement.png';
             if (data.itemSlot || data.isBig) return 'layout_equipement.png';
             return 'layout_item.png';
         }
@@ -434,14 +435,27 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data, index }) => {
                                         Gros
                                     </span>
                                 )}
-                                {data.itemSlot && data.itemSlot !== 'NoSlot' && data.itemSlot !== 'Amélioration' ? (
-                                    <span className="font-medieval font-bold text-[#682A22] whitespace-nowrap block"
-                                        style={{ fontSize: '0.9rem' }}>
-                                        {data.itemSlot}
-                                    </span>
+                                {data.itemSlot === 'Amélioration de Monture' ? (
+                                    <>
+                                        <span className="font-medieval font-bold text-[#682A22] whitespace-nowrap absolute bottom-full left-0 mb-[-0.1rem]"
+                                            style={{ fontSize: '0.9rem' }}>
+                                            Amélioration
+                                        </span>
+                                        <span className="font-medieval font-bold text-[#682A22] whitespace-nowrap block"
+                                            style={{ fontSize: '0.9rem' }}>
+                                            de Monture
+                                        </span>
+                                    </>
                                 ) : (
-                                    /* Espace réservé pour maintenir la position si pas de slot */
-                                    <span className="block h-[0.9rem]">&nbsp;</span>
+                                    data.itemSlot && data.itemSlot !== 'NoSlot' && data.itemSlot !== 'Amélioration' ? (
+                                        <span className="font-medieval font-bold text-[#682A22] whitespace-nowrap block"
+                                            style={{ fontSize: data.itemSlot.length > 15 ? '0.7rem' : '0.9rem' }}>
+                                            {data.itemSlot}
+                                        </span>
+                                    ) : (
+                                        /* Espace réservé pour maintenir la position si pas de slot */
+                                        <span className="block h-[0.9rem]">&nbsp;</span>
+                                    )
                                 )}
                             </div>
                         )}

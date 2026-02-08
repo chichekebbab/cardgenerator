@@ -118,7 +118,7 @@ export const generateCardSuggestion = async (concept: string, apiKey?: string): 
         "gold": "Valeur (ex: '300 Pièces d'Or' ou '2 trésors')",
         "imagePrompt": "Description visuelle détaillée pour le dessinateur (style John Kovalic), centrée sur un élément unique, sans décor complexe.",
         "levelsGained": number (si Monstre, dépend du niveau selon table ci-dessous),
-        "itemSlot": "Usage Unique" | "1 Main" | "2 Mains" | "Armure" | "Couvre-chef" | "Chaussures" | "NoSlot" | "Monture" (si Objet),
+        "itemSlot": "Usage Unique" | "1 Main" | "2 Mains" | "Armure" | "Couvre-chef" | "Chaussures" | "NoSlot" | "Monture" | "Amélioration de Monture" (si Objet),
         "restrictions": "Restrictions d'usage (ex: Elfes uniquement)",
         "isBig": boolean (si Objet)
       }

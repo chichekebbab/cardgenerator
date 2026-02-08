@@ -476,7 +476,7 @@ const DeckStats: React.FC<DeckStatsProps> = ({ cards, targetTotal = 350, onTarge
                         } else if (c.itemSlot === "NoSlot") {
                           itemStats.NO_SLOT.current++;
                           if (c.isValidated) itemStats.NO_SLOT.validated++;
-                        } else if (c.itemSlot === "Amélioration" || c.itemSlot === "Monture") {
+                        } else if (c.itemSlot === "Amélioration" || c.itemSlot === "Monture" || c.itemSlot === "Amélioration de Monture") {
                           itemStats.AMELIORATION_MONTURE.current++;
                           if (c.isValidated) itemStats.AMELIORATION_MONTURE.validated++;
                         } else {

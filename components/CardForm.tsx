@@ -477,7 +477,14 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
                 <label className="block text-xs font-medium text-gray-600 mb-1">Emplacement</label>
                 <select
                   value={cardData.itemSlot || ''}
-                  onChange={(e) => handleChange('itemSlot', e.target.value)}
+                  onChange={(e) => {
+                    const newSlot = e.target.value;
+                    onChange({
+                      ...cardData,
+                      itemSlot: newSlot,
+                      isBig: newSlot === 'Amélioration de Monture' ? false : cardData.isBig
+                    });
+                  }}
                   className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-amber-500"
                 >
                   <option value="">Usage Unique</option>
@@ -487,16 +494,18 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
                   <option value="Chaussures">Chaussures</option>
                   <option value="Armure">Armure</option>
                   <option value="Monture">Monture</option>
+                  <option value="Amélioration de Monture">Amélioration de Monture</option>
                   <option value="NoSlot">Sans emplacement</option>
                   <option value="Amélioration">Amélioration</option>
                 </select>
               </div>
               <div className="flex items-end pb-2">
-                <label className="flex items-center space-x-2 cursor-pointer">
+                <label className={`flex items-center space-x-2 ${cardData.itemSlot === 'Amélioration de Monture' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
                   <input
                     type="checkbox"
                     checked={cardData.isBig}
                     onChange={(e) => handleChange('isBig', e.target.checked)}
+                    disabled={cardData.itemSlot === 'Amélioration de Monture'}
                     className="w-4 h-4 text-amber-600 rounded focus:ring-amber-500"
                   />
                   <span className="text-sm font-medium text-gray-700">Gros Objet</span>
