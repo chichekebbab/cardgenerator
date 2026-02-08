@@ -184,6 +184,28 @@ export const BASE_TARGETS = {
 
 export const DEFAULT_TOTAL = 350;
 
+// Répartition des objets pour un deck de 350 cartes (Total ITEM: 102)
+export const ITEM_TARGETS = {
+    USAGE_UNIQUE: 33,
+    AUTRE: 2,
+    AMELIORATION_MONTURE: 3,
+    ONE_HAND: 22,
+    NO_SLOT: 11,
+    BIG: 3,
+    ARMOR: 6,
+    HEADGEAR: 8,
+    FOOTGEAR: 8,
+    TWO_HANDS: 6
+};
+
+/**
+ * Calculer le nombre cible pour un emplacement d'objet spécifique
+ */
+export const getTargetCountForSlot = (slotKey: keyof typeof ITEM_TARGETS, deckSize: number): number => {
+    const ratio = deckSize / DEFAULT_TOTAL;
+    return Math.ceil(ITEM_TARGETS[slotKey] * ratio);
+};
+
 /**
  * Calculer les cibles ajustées pour toutes les catégories
  */
@@ -203,3 +225,4 @@ export const getAllTargets = (targetTotal: number) => {
         ITEM: Math.ceil(BASE_TARGETS.ITEM * ratio),
     };
 };
+

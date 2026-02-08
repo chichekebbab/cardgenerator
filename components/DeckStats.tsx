@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CardData, CardType } from '../types';
-import { getTargetCountForLevel, getAllTargets, DEFAULT_TOTAL } from '../utils/balancingConfig';
+import { getTargetCountForLevel, getAllTargets, DEFAULT_TOTAL, ITEM_TARGETS, getTargetCountForSlot } from '../utils/balancingConfig';
 
 interface DeckStatsProps {
   cards: CardData[];
@@ -59,6 +59,7 @@ const DeckStats: React.FC<DeckStatsProps> = ({ cards, targetTotal = 350, onTarge
   const [isDungeonExpanded, setIsDungeonExpanded] = useState(false);
   const [isTreasureExpanded, setIsTreasureExpanded] = useState(false);
   const [isMonsterLevelExpanded, setIsMonsterLevelExpanded] = useState(false);
+  const [isItemDetailExpanded, setIsItemDetailExpanded] = useState(false);
 
   // Charger les préférences d'affichage depuis localStorage
   useEffect(() => {
@@ -75,6 +76,11 @@ const DeckStats: React.FC<DeckStatsProps> = ({ cards, targetTotal = 350, onTarge
     const savedMonsterLevelExpanded = localStorage.getItem('deckstats_monster_level_expanded');
     if (savedMonsterLevelExpanded !== null) {
       setIsMonsterLevelExpanded(savedMonsterLevelExpanded === 'true');
+    }
+
+    const savedItemDetailExpanded = localStorage.getItem('deckstats_item_detail_expanded');
+    if (savedItemDetailExpanded !== null) {
+      setIsItemDetailExpanded(savedItemDetailExpanded === 'true');
     }
   }, []);
 
@@ -101,6 +107,12 @@ const DeckStats: React.FC<DeckStatsProps> = ({ cards, targetTotal = 350, onTarge
     const newValue = !isMonsterLevelExpanded;
     setIsMonsterLevelExpanded(newValue);
     localStorage.setItem('deckstats_monster_level_expanded', String(newValue));
+  };
+
+  const toggleItemDetailExpanded = () => {
+    const newValue = !isItemDetailExpanded;
+    setIsItemDetailExpanded(newValue);
+    localStorage.setItem('deckstats_item_detail_expanded', String(newValue));
   };
 
   // Calculer les cibles ajustées
@@ -404,7 +416,101 @@ const DeckStats: React.FC<DeckStatsProps> = ({ cards, targetTotal = 350, onTarge
           {isTreasureExpanded && (
             <div className="bg-white p-2">
               <StatRow label="Piège T." current={treasureTrapCount} validated={treasureTrapValidated} target={adjustedTargets.TREASURE_TRAP} />
-              <StatRow label="Objets" current={itemCount} validated={itemValidated} target={adjustedTargets.ITEM} />
+
+              <div className="border-t border-gray-100 mt-1 pt-1">
+                <button
+                  onClick={toggleItemDetailExpanded}
+                  className="w-full flex items-center justify-between text-xs hover:bg-stone-50 transition-colors py-1.5 px-2 rounded"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-600 truncate max-w-[80px]" title="Objets">Objets</span>
+                    <div className="flex items-center gap-1.5 font-mono text-[10px]">
+                      <span className={`${getStatusColor(itemValidated, adjustedTargets.ITEM)} font-bold`}>✓{itemValidated}</span>
+                      <span className="text-stone-300">/</span>
+                      <span className="text-stone-400">{adjustedTargets.ITEM}</span>
+                    </div>
+                  </div>
+                  <span className="text-[10px] transition-transform duration-200" style={{ transform: isItemDetailExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                    ▼
+                  </span>
+                </button>
+
+                {isItemDetailExpanded && (
+                  <div className="mt-1 space-y-1 pl-2 border-l border-stone-100 ml-1">
+                    {(() => {
+                      const itemStats = {
+                        USAGE_UNIQUE: { current: 0, validated: 0 },
+                        AUTRE: { current: 0, validated: 0 },
+                        AMELIORATION_MONTURE: { current: 0, validated: 0 },
+                        ONE_HAND: { current: 0, validated: 0 },
+                        NO_SLOT: { current: 0, validated: 0 },
+                        BIG: { current: 0, validated: 0 },
+                        ARMOR: { current: 0, validated: 0 },
+                        HEADGEAR: { current: 0, validated: 0 },
+                        FOOTGEAR: { current: 0, validated: 0 },
+                        TWO_HANDS: { current: 0, validated: 0 },
+                      };
+
+                      itemCards.forEach(c => {
+                        if (c.isBig) {
+                          itemStats.BIG.current++;
+                          if (c.isValidated) itemStats.BIG.validated++;
+                        } else if (!c.itemSlot || c.itemSlot === "") {
+                          itemStats.USAGE_UNIQUE.current++;
+                          if (c.isValidated) itemStats.USAGE_UNIQUE.validated++;
+                        } else if (c.itemSlot === "1 Main") {
+                          itemStats.ONE_HAND.current++;
+                          if (c.isValidated) itemStats.ONE_HAND.validated++;
+                        } else if (c.itemSlot === "2 Mains") {
+                          itemStats.TWO_HANDS.current++;
+                          if (c.isValidated) itemStats.TWO_HANDS.validated++;
+                        } else if (c.itemSlot === "Couvre-chef") {
+                          itemStats.HEADGEAR.current++;
+                          if (c.isValidated) itemStats.HEADGEAR.validated++;
+                        } else if (c.itemSlot === "Chaussures") {
+                          itemStats.FOOTGEAR.current++;
+                          if (c.isValidated) itemStats.FOOTGEAR.validated++;
+                        } else if (c.itemSlot === "Armure") {
+                          itemStats.ARMOR.current++;
+                          if (c.isValidated) itemStats.ARMOR.validated++;
+                        } else if (c.itemSlot === "NoSlot") {
+                          itemStats.NO_SLOT.current++;
+                          if (c.isValidated) itemStats.NO_SLOT.validated++;
+                        } else if (c.itemSlot === "Amélioration" || c.itemSlot === "Monture") {
+                          itemStats.AMELIORATION_MONTURE.current++;
+                          if (c.isValidated) itemStats.AMELIORATION_MONTURE.validated++;
+                        } else {
+                          itemStats.AUTRE.current++;
+                          if (c.isValidated) itemStats.AUTRE.validated++;
+                        }
+                      });
+
+                      const labels = {
+                        USAGE_UNIQUE: "Usage Unique",
+                        AUTRE: "Autre",
+                        AMELIORATION_MONTURE: "Amélio. Monture",
+                        ONE_HAND: "1 Main",
+                        NO_SLOT: "Sans slot",
+                        BIG: "Gros",
+                        ARMOR: "Armure",
+                        HEADGEAR: "Chapeau",
+                        FOOTGEAR: "Chaussure",
+                        TWO_HANDS: "2 Mains"
+                      };
+
+                      return (Object.keys(itemStats) as Array<keyof typeof itemStats>).map(key => (
+                        <StatRow
+                          key={key}
+                          label={labels[key]}
+                          current={itemStats[key].current}
+                          validated={itemStats[key].validated}
+                          target={getTargetCountForSlot(key, targetTotal)}
+                        />
+                      ));
+                    })()}
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
