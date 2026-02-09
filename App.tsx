@@ -250,9 +250,11 @@ const App: React.FC = () => {
 
   const handleSaveCard = async (cardToSave?: CardData | any) => {
     // Detect if we received a valid CardData object or an event/undefined
-    // Events have properties like 'target', 'preventDefault', etc.
+    // Events have properties like 'target', 'preventDefault', 'nativeEvent', etc.
     // CardData has 'id', 'title', 'type', etc.
-    const isValidCardData = cardToSave && typeof cardToSave === 'object' && 'id' in cardToSave && 'title' in cardToSave;
+    // IMPORTANT: Check that it's NOT a React event (which would have 'target' or 'nativeEvent')
+    const isReactEvent = cardToSave && typeof cardToSave === 'object' && ('target' in cardToSave || 'nativeEvent' in cardToSave || 'currentTarget' in cardToSave);
+    const isValidCardData = cardToSave && typeof cardToSave === 'object' && 'id' in cardToSave && 'title' in cardToSave && !isReactEvent;
     const dataToSave = isValidCardData ? cardToSave : cardData;
     const calledFromBackgroundRemoval = isValidCardData;
 

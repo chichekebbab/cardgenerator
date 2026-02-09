@@ -1,6 +1,42 @@
 import { CardData } from '../types';
 
 /**
+ * Sanitize card data to remove any non-serializable properties (like DOM references)
+ * that might have been accidentally added to the card object.
+ */
+const sanitizeCardData = (card: CardData): CardData => {
+  // Create a clean copy with only the expected CardData properties
+  const cleanCard: CardData = {
+    id: card.id,
+    title: card.title,
+    type: card.type,
+    layout: card.layout,
+    level: card.level,
+    bonus: card.bonus,
+    description: card.description,
+    badStuff: card.badStuff,
+    gold: card.gold,
+    imagePrePrompt: card.imagePrePrompt,
+    imagePrompt: card.imagePrompt,
+    imageData: card.imageData,
+    storedImageUrl: card.storedImageUrl,
+    itemSlot: card.itemSlot,
+    isBig: card.isBig,
+    restrictions: card.restrictions,
+    levelsGained: card.levelsGained,
+    imageScale: card.imageScale,
+    imageOffsetX: card.imageOffsetX,
+    imageOffsetY: card.imageOffsetY,
+    descriptionBoxScale: card.descriptionBoxScale,
+    isBaseCard: card.isBaseCard,
+    isValidated: card.isValidated,
+    internalComment: card.internalComment,
+  };
+
+  return cleanCard;
+};
+
+/**
  * Envoie les données au Google Apps Script.
  * IMPORTANT : On utilise le Content-Type 'text/plain' pour éviter le "Preflight" CORS (OPTIONS)
  * que Google Apps Script ne gère pas nativement.
@@ -8,12 +44,15 @@ import { CardData } from '../types';
 export const saveCardToSheet = async (scriptUrl: string, card: CardData): Promise<{ status: string, imageUrl?: string }> => {
   if (!scriptUrl) throw new Error("URL du Script Google manquante");
 
+  // Sanitize the card data to remove any DOM references or unexpected properties
+  const cleanCard = sanitizeCardData(card);
+
   const response = await fetch(scriptUrl, {
     method: 'POST',
     headers: {
       "Content-Type": "text/plain;charset=utf-8",
     },
-    body: JSON.stringify({ action: 'save', card }),
+    body: JSON.stringify({ action: 'save', card: cleanCard }),
   });
 
   if (!response.ok) {
