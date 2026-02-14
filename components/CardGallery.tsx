@@ -77,6 +77,7 @@ const CardGallery: React.FC<CardGalleryProps> = ({
   const [filterImage, setFilterImage] = useState<'all' | 'avec' | 'sans'>('all');
   const [isExportingSelection, setIsExportingSelection] = useState(false);
   const [exportProgress, setExportProgress] = useState({ current: 0, total: 0 });
+  const [exportChunkInfo, setExportChunkInfo] = useState<{ chunk: number; totalChunks: number } | null>(null);
   const [exportMode, setExportMode] = useState<'all' | 'Donjon' | 'Tresor'>('all');
   const [sortByLevel, setSortByLevel] = useState(true);
   const [showMissingCards, setShowMissingCards] = useState(true);
@@ -796,7 +797,23 @@ const CardGallery: React.FC<CardGalleryProps> = ({
                   <span>Carte {exportProgress.current} / {exportProgress.total}</span>
                   <span>{Math.round((exportProgress.current / (exportProgress.total || 1)) * 100)}%</span>
                 </div>
-                <p className="text-xs text-gray-400 mt-4">Veuillez patienter pendant la génération du fichier ZIP.</p>
+                {exportChunkInfo && exportChunkInfo.totalChunks > 1 && (
+                  <p className="text-sm text-amber-600 font-medium mt-2">
+                    📦 Lot {exportChunkInfo.chunk} / {exportChunkInfo.totalChunks}
+                  </p>
+                )}
+                <p className="text-xs text-gray-400 mt-3">
+                  {exportChunkInfo && exportChunkInfo.totalChunks > 1
+                    ? `Chaque lot de 40 cartes sera téléchargé automatiquement.`
+                    : `Veuillez patienter pendant la génération du fichier ZIP.`
+                  }
+                </p>
+                <button
+                  onClick={() => setIsExportingSelection(false)}
+                  className="mt-4 px-5 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-medium rounded-lg shadow transition-colors"
+                >
+                  ✕ Annuler l'export
+                </button>
               </div>
             </div>
 
@@ -805,8 +822,14 @@ const CardGallery: React.FC<CardGalleryProps> = ({
                 if (exportMode === 'all') return true;
                 return getCardCategory(c) === exportMode;
               })}
-              onComplete={() => setIsExportingSelection(false)}
-              onProgress={(current, total) => setExportProgress({ current, total })}
+              onComplete={() => {
+                setIsExportingSelection(false);
+                setExportChunkInfo(null);
+              }}
+              onProgress={(current, total, chunkInfo) => {
+                setExportProgress({ current, total });
+                if (chunkInfo) setExportChunkInfo(chunkInfo);
+              }}
             />
           </>
         )
