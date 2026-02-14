@@ -351,7 +351,7 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data, index }) => {
                     <div className="absolute z-30 text-center transform -translate-y-1/2"
                         style={{
                             left: scaleX(169),
-                            top: scaleY(133),
+                            top: scaleY(data.type === CardType.CLASS || data.type === CardType.RACE ? 133 + 25 : 133),
                             width: scaleX(488 - 169),
                         }}>
                         <h2 className="font-munchkin-title font-bold uppercase tracking-wide text-[#5C1B15] leading-[1.15] break-words"

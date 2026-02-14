@@ -460,6 +460,23 @@ const CardGallery: React.FC<CardGalleryProps> = ({
               </div>
             </div>
           )}
+
+          {/* Always-visible card count summary */}
+          {!showFilters && cards.length > 0 && (
+            <div className="flex items-center justify-between text-sm text-gray-500 pt-1">
+              <div className="flex items-center gap-3">
+                {searchQuery || filterBase !== 'all' || filterValidated !== 'all' || filterImage !== 'all' ? (
+                  <span>{totalMatchingCards} carte{totalMatchingCards !== 1 ? 's' : ''} filtrée{totalMatchingCards !== 1 ? 's' : ''}</span>
+                ) : (
+                  <span>{cards.length} carte{cards.length !== 1 ? 's' : ''} au total</span>
+                )}
+                <span className="text-gray-300">•</span>
+                <span className="text-emerald-600 font-medium">
+                  ✓ {cards.filter(c => c.isValidated).length} validée{cards.filter(c => c.isValidated).length !== 1 ? 's' : ''}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

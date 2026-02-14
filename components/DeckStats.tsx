@@ -176,9 +176,14 @@ const DeckStats: React.FC<DeckStatsProps> = ({ cards, targetTotal = 350, onTarge
   const totalTreasureValidated = treasureTrapValidated + itemValidated;
   const totalTreasureTarget = adjustedTargets.TREASURE_TRAP + adjustedTargets.ITEM;
 
-  // --- TOTAUX GLOBAUX ---
-  const grandTotalCurrent = totalDungeonCurrent + totalTreasureCurrent;
-  const grandTotalValidated = totalDungeonValidated + totalTreasureValidated;
+  // --- CALCULS AUTRE ---
+  const otherCards = cards.filter(c => c.type === CardType.OTHER);
+  const otherCount = otherCards.length;
+  const otherValidated = otherCards.filter(c => c.isValidated).length;
+
+  // --- TOTAUX GLOBAUX (toutes les cartes, y compris "Autre") ---
+  const grandTotalCurrent = cards.length;
+  const grandTotalValidated = cards.filter(c => c.isValidated).length;
   const grandTotalTarget = targetTotal;
 
   // Gestion de l'édition du nombre cible
@@ -513,6 +518,14 @@ const DeckStats: React.FC<DeckStatsProps> = ({ cards, targetTotal = 350, onTarge
               </div>
             </div>
           )}
+
+          {/* SECTION AUTRE (si des cartes "Autre" existent) */}
+          {otherCount > 0 && (
+            <div className="bg-gray-50 border border-gray-200 rounded p-2">
+              <StatRow label="Autre" current={otherCount} validated={otherValidated} target={0} />
+            </div>
+          )}
+
         </div>
 
       </div>

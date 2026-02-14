@@ -98,7 +98,11 @@ const ExportCardRenderer = forwardRef<HTMLDivElement, ExportCardRendererProps>((
 
                 {/* 2. TITRE - Centré sur Y=133, entre X=169 et X=488 */}
                 <div className="absolute z-30 text-center transform -translate-y-1/2"
-                    style={{ left: '169px', top: '133px', width: '319px' }}>
+                    style={{
+                        left: '169px',
+                        top: `${data.type === CardType.CLASS || data.type === CardType.RACE ? 133 + 25 : 133}px`,
+                        width: '319px'
+                    }}>
                     <h2 className="font-munchkin-title font-bold uppercase tracking-wide text-[#5C1B15] leading-[1.15] break-words"
                         style={{ fontSize: '2.2rem' }}>
                         {data.title}
