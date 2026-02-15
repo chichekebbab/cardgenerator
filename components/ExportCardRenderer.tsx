@@ -77,24 +77,32 @@ const ExportCardRenderer = forwardRef<HTMLDivElement, ExportCardRendererProps>((
             {/* CONTENU */}
             <div className="absolute inset-0 z-[10]">
                 {/* 1. DIAMANTS (Niveau / Bonus) - Positionnés sur 108;119 et 550;119 */}
-                {diamond.value && (
-                    <>
-                        <div className="absolute pointer-events-none z-30"
-                            style={{ left: '108px', top: '119px' }}>
-                            <span className="font-munchkin-title font-bold text-white text-shadow-strong leading-none block transform -translate-x-1/2 -translate-y-1/2"
-                                style={{ fontSize: '2.8rem' }}>
-                                {diamond.value}
-                            </span>
-                        </div>
-                        <div className="absolute pointer-events-none z-30"
-                            style={{ left: '550px', top: '119px' }}>
-                            <span className="font-munchkin-title font-bold text-white text-shadow-strong leading-none block transform -translate-x-1/2 -translate-y-1/2"
-                                style={{ fontSize: '2.8rem' }}>
-                                {diamond.value}
-                            </span>
-                        </div>
-                    </>
-                )}
+                {diamond.value && (() => {
+                    const valueStr = String(diamond.value);
+                    const isRange = valueStr.includes('/');
+                    const fontWeight = isRange ? 'font-normal' : 'font-bold';
+                    const fontSize = isRange ? '2.4rem' : '2.8rem';
+                    const leftOffset = isRange ? 6 : 0;
+                    const topOffset = isRange ? 4 : 0;
+                    return (
+                        <>
+                            <div className="absolute pointer-events-none z-30"
+                                style={{ left: `${108 - leftOffset}px`, top: `${119 + topOffset}px` }}>
+                                <span className={`font-munchkin-title ${fontWeight} text-white text-shadow-strong leading-none block transform -translate-x-1/2 -translate-y-1/2`}
+                                    style={{ fontSize }}>
+                                    {diamond.value}
+                                </span>
+                            </div>
+                            <div className="absolute pointer-events-none z-30"
+                                style={{ left: `${550 - leftOffset}px`, top: `${119 + topOffset}px` }}>
+                                <span className={`font-munchkin-title ${fontWeight} text-white text-shadow-strong leading-none block transform -translate-x-1/2 -translate-y-1/2`}
+                                    style={{ fontSize }}>
+                                    {diamond.value}
+                                </span>
+                            </div>
+                        </>
+                    );
+                })()}
 
                 {/* 2. TITRE - Centré sur Y=133, entre X=169 et X=488 */}
                 <div className="absolute z-30 text-center transform -translate-y-1/2"

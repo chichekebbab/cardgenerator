@@ -64,33 +64,32 @@ export const getExportFilename = (card: CardData, index?: number): string => {
  * - Si positif : ajoute un "+" devant (ex: 5 -> "+5")
  * - Si négatif : laisse tel quel (ex: -5 -> "-5")
  * - Si vide ou 0 : retourne une chaîne vide
- * - Supporte les valeurs multiples avec "/" (ex: "4/5" -> "+4/5", "-2/3" -> "-2/+3")
+ * - Supporte les fourchettes avec "/" : l'opérateur n'est affiché qu'une seule fois
+ *   (ex: "2/4" -> "+2/4", "-2/-4" -> "-2/4")
  */
 export const formatBonus = (bonus: string | number): string => {
     if (bonus === '' || bonus === 0) return '';
 
     const bonusStr = String(bonus);
 
-    // Gérer les valeurs avec "/" (ex: "4/5" -> "+4/5")
+    // Gérer les fourchettes avec "/" (ex: "2/4" -> "+2/4", "-2/-4" -> "-2/4")
     if (bonusStr.includes('/')) {
         const parts = bonusStr.split('/');
-        const formattedParts = parts.map(part => {
+        const numParts = parts.map(part => {
             const trimmedPart = part.trim();
-            if (trimmedPart === '') return '';
-
-            const numPart = parseFloat(trimmedPart);
-            if (isNaN(numPart)) return trimmedPart;
-
-            // Si positif, ajouter le "+"
-            if (numPart > 0) {
-                return `+${numPart}`;
-            }
-
-            // Si négatif, le signe "-" est déjà présent
-            return String(numPart);
+            if (trimmedPart === '') return NaN;
+            return parseFloat(trimmedPart);
         });
 
-        return formattedParts.join('/');
+        // Vérifier que toutes les parties sont des nombres valides
+        if (numParts.some(n => isNaN(n))) return bonusStr;
+
+        // Déterminer le signe commun (basé sur la première valeur)
+        const sign = numParts[0] >= 0 ? '+' : '-';
+
+        // Formater : opérateur une seule fois, puis valeurs absolues séparées par "/"
+        const absValues = numParts.map(n => Math.abs(n));
+        return `${sign}${absValues.join('/')}`;
     }
 
     // Cas simple : valeur unique

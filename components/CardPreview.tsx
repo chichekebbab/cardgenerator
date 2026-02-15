@@ -321,30 +321,38 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data, index }) => {
 
                     {/* 1. NIVEAUX / BONUS (Haut Gauche & Haut Droite) */}
                     {/* Centrés sur 108;119 et 550;119 */}
-                    {diamond.value && (
-                        <>
-                            <div className="absolute pointer-events-none z-30"
-                                style={{
-                                    left: scaleX(108),
-                                    top: scaleY(119),
-                                }}>
-                                <span className="font-munchkin-title font-bold text-white text-shadow-strong leading-none block transform -translate-x-1/2 -translate-y-1/2"
-                                    style={{ fontSize: '1.4rem' }}>
-                                    {diamond.value}
-                                </span>
-                            </div>
-                            <div className="absolute pointer-events-none z-30"
-                                style={{
-                                    left: scaleX(550),
-                                    top: scaleY(119),
-                                }}>
-                                <span className="font-munchkin-title font-bold text-white text-shadow-strong leading-none block transform -translate-x-1/2 -translate-y-1/2"
-                                    style={{ fontSize: '1.4rem' }}>
-                                    {diamond.value}
-                                </span>
-                            </div>
-                        </>
-                    )}
+                    {diamond.value && (() => {
+                        const valueStr = String(diamond.value);
+                        const isRange = valueStr.includes('/');
+                        const fontWeight = isRange ? 'font-normal' : 'font-bold';
+                        const fontSize = isRange ? '1.2rem' : '1.4rem';
+                        const leftOffset = isRange ? 6 : 0;
+                        const topOffset = isRange ? 4 : 0;
+                        return (
+                            <>
+                                <div className="absolute pointer-events-none z-30"
+                                    style={{
+                                        left: scaleX(108 - leftOffset),
+                                        top: scaleY(119 + topOffset),
+                                    }}>
+                                    <span className={`font-munchkin-title ${fontWeight} text-white text-shadow-strong leading-none block transform -translate-x-1/2 -translate-y-1/2`}
+                                        style={{ fontSize }}>
+                                        {diamond.value}
+                                    </span>
+                                </div>
+                                <div className="absolute pointer-events-none z-30"
+                                    style={{
+                                        left: scaleX(550 - leftOffset),
+                                        top: scaleY(119 + topOffset),
+                                    }}>
+                                    <span className={`font-munchkin-title ${fontWeight} text-white text-shadow-strong leading-none block transform -translate-x-1/2 -translate-y-1/2`}
+                                        style={{ fontSize }}>
+                                        {diamond.value}
+                                    </span>
+                                </div>
+                            </>
+                        );
+                    })()}
 
                     {/* 2. TITRE */}
                     {/* Centré verticalement sur Y=133, contraint horizontalement entre 169 et 488 */}
