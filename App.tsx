@@ -295,6 +295,28 @@ const App: React.FC = () => {
       // Mark card as saved (no unsaved changes)
       setHasUnsavedChanges(false);
 
+      // Immediately update savedCards with the saved card data
+      // This ensures navigation shows the latest data without waiting for the 2s sheet refresh
+      const updatedDataToSave = {
+        ...dataToSave,
+        ...(result.imageUrl && (result.imageUrl.startsWith('http') || result.imageUrl.startsWith('data:'))
+          ? { storedImageUrl: result.imageUrl }
+          : {}),
+        imageData: null, // savedCards should not hold base64 image data
+      };
+      setSavedCards(prev => {
+        const existingIndex = prev.findIndex(c => c.id === dataToSave.id);
+        if (existingIndex !== -1) {
+          // Update existing card in-place
+          const updated = [...prev];
+          updated[existingIndex] = updatedDataToSave;
+          return updated;
+        } else {
+          // New card: add at beginning (newest first)
+          return [updatedDataToSave, ...prev];
+        }
+      });
+
       // Only show alert if NOT called from background removal (to avoid double alerts)
       if (!calledFromBackgroundRemoval) {
         showNotification("Carte sauvegardée avec succès !", 'success');

@@ -213,14 +213,23 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
     if (cardData.type === CardType.MONSTER && typeof cardData.level === 'number' && cardData.level > 0) {
       const recommended = getRecommendedValues(cardData.level);
 
+      // Build a single update object to avoid stale closure issues
+      // (multiple handleChange calls would each use the same cardData snapshot)
+      const updates: Partial<CardData> = {};
+
       // Auto-fill levelsGained if empty or if it's a new card
       if (cardData.levelsGained === '' || cardData.levelsGained === null) {
-        handleChange('levelsGained', recommended.levelsGained);
+        updates.levelsGained = recommended.levelsGained;
       }
 
       // Auto-fill gold (treasures) if empty or if it's a new card
       if (!cardData.gold || cardData.gold.trim() === '') {
-        handleChange('gold', formatTreasures(recommended.treasuresGained));
+        updates.gold = formatTreasures(recommended.treasuresGained);
+      }
+
+      // Apply all updates at once
+      if (Object.keys(updates).length > 0) {
+        onChange({ ...cardData, ...updates });
       }
     }
   }, [cardData.level, cardData.type]); // Only run when level or type changes
