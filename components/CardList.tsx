@@ -512,6 +512,28 @@ const CardList: React.FC<CardListProps> = ({ cards, onSelectCard, onUpdateCard, 
                 </div>
             </div>
 
+            {/* Filters bar - Always visible when cards exist */}
+            {!isLoading && cards.length > 0 && (
+                <div className="sticky top-[4.5rem] z-10 bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-sm">
+                    <div className="overflow-x-auto px-4 py-2">
+                        <div className="inline-flex min-w-full gap-2">
+                            {COLUMNS.map(column => (
+                                <div
+                                    key={`filter-${column.key}`}
+                                    className="flex flex-col gap-1"
+                                    style={{ minWidth: column.width || '100px' }}
+                                >
+                                    <label className="text-xs font-medium text-gray-600 px-1">
+                                        {column.label}
+                                    </label>
+                                    {renderFilterInput(column)}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Loading state */}
             {isLoading && (
                 <div className="flex items-center justify-center py-20">
@@ -541,12 +563,9 @@ const CardList: React.FC<CardListProps> = ({ cards, onSelectCard, onUpdateCard, 
                     <p className="text-gray-500 text-center mb-4">
                         Aucune carte ne correspond aux filtres actifs.
                     </p>
-                    <button
-                        onClick={clearFilters}
-                        className="text-amber-600 hover:text-amber-700 font-medium underline"
-                    >
-                        Effacer les filtres
-                    </button>
+                    <p className="text-gray-400 text-sm">
+                        Ajustez vos filtres ci-dessus pour affiner votre recherche.
+                    </p>
                 </div>
             )}
 
@@ -573,14 +592,6 @@ const CardList: React.FC<CardListProps> = ({ cards, onSelectCard, onUpdateCard, 
                                             </th>
                                         ))}
                                     </tr>
-                                    {/* Filter row */}
-                                    <tr className="bg-amber-50 border-b-2 border-amber-200">
-                                        {COLUMNS.map(column => (
-                                            <th key={`filter-${column.key}`} className="px-2 py-2">
-                                                {renderFilterInput(column)}
-                                            </th>
-                                        ))}
-                                    </tr>
                                 </thead>
                                 {/* Body */}
                                 <tbody>
@@ -598,12 +609,12 @@ const CardList: React.FC<CardListProps> = ({ cards, onSelectCard, onUpdateCard, 
                                                     key={`${card.id}-${column.key}`}
                                                     onClick={(e) => handleCellClick(e, card, column)}
                                                     className={`px-3 py-2.5 max-w-[200px] ${column.key === 'title'
-                                                            ? 'cursor-pointer'
-                                                            : column.type === 'boolean' && onUpdateCard
-                                                                ? 'cursor-pointer hover:bg-amber-100/50'
-                                                                : onUpdateCard
-                                                                    ? 'cursor-text hover:bg-amber-100/50'
-                                                                    : ''
+                                                        ? 'cursor-pointer'
+                                                        : column.type === 'boolean' && onUpdateCard
+                                                            ? 'cursor-pointer hover:bg-amber-100/50'
+                                                            : onUpdateCard
+                                                                ? 'cursor-text hover:bg-amber-100/50'
+                                                                : ''
                                                         }`}
                                                 >
                                                     {renderCellValue(card, column)}
