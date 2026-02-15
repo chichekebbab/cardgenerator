@@ -544,7 +544,7 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
-              checked={cardData.isBaseCard}
+              checked={!!cardData.isBaseCard}
               onChange={(e) => handleChange('isBaseCard', e.target.checked)}
               className="w-4 h-4 text-amber-600 rounded focus:ring-amber-500"
             />
@@ -554,7 +554,7 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
-              checked={cardData.isValidated}
+              checked={!!cardData.isValidated}
               onChange={(e) => handleChange('isValidated', e.target.checked)}
               className="w-4 h-4 text-green-600 rounded focus:ring-green-500"
             />

@@ -883,6 +883,7 @@ const App: React.FC = () => {
                   </div>
                 )}
                 <CardForm
+                  key={cardData.id}
                   cardData={cardData}
                   onChange={setCardData}
                   onSave={handleSaveCard}

@@ -65,6 +65,28 @@ export const saveCardToSheet = async (scriptUrl: string, card: CardData): Promis
 };
 
 /**
+ * Normalize card data from the sheet to ensure correct types.
+ * Google Sheets / JSON can sometimes store booleans as strings ("true"/"false")
+ * which causes bugs because "false" is truthy in JavaScript.
+ */
+const normalizeCardData = (card: any): CardData => {
+  return {
+    ...card,
+    // Ensure booleans are actual booleans, not strings
+    isValidated: card.isValidated === true || card.isValidated === 'true',
+    isBaseCard: card.isBaseCard === true || card.isBaseCard === 'true',
+    isBig: card.isBig === true || card.isBig === 'true',
+    // Ensure numbers have defaults
+    imageScale: card.imageScale ?? 100,
+    imageOffsetX: card.imageOffsetX ?? 0,
+    imageOffsetY: card.imageOffsetY ?? 0,
+    descriptionBoxScale: card.descriptionBoxScale ?? 100,
+    // Ensure strings have defaults
+    internalComment: card.internalComment || '',
+  };
+};
+
+/**
  * Récupère les cartes depuis le Google Apps Script.
  * Si cela échoue avec "Failed to fetch", c'est souvent un problème de permissions (CORS).
  */
@@ -90,7 +112,8 @@ export const fetchCardsFromSheet = async (scriptUrl: string): Promise<CardData[]
       throw new Error(data.message);
     }
 
-    return Array.isArray(data) ? data : [];
+    // Normalize all card data to ensure correct types
+    return Array.isArray(data) ? data.map(normalizeCardData) : [];
   } catch (e) {
     console.error("Erreur détaillée fetchCardsFromSheet:", e);
     // On relance l'erreur pour que l'UI puisse l'afficher ou la logger
