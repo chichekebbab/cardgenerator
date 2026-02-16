@@ -53,6 +53,9 @@ export function formatGoldDisplay(
     }
 
     if (cardType === CardType.ITEM) {
+        if (numericValue === 0) {
+            return 'Aucune valeur';
+        }
         return `${numericValue} pièce${numericValue > 1 ? 's' : ''} d'or`;
     }
 
