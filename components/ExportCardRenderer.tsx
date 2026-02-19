@@ -1,4 +1,4 @@
-import React, { forwardRef } from 'react';
+import React, { forwardRef, useRef, useState, useEffect } from 'react';
 import { CardData, CardType } from '../types';
 import { formatBonus } from '../utils/layoutUtils';
 import { formatGoldDisplay } from '../utils/goldFormatter';
@@ -13,7 +13,43 @@ interface ExportCardRendererProps {
 const REF_WIDTH = 661;
 const REF_HEIGHT = 1028;
 
-const ExportCardRenderer = forwardRef<HTMLDivElement, ExportCardRendererProps>(({ data, layoutSrc, descriptionFontSize = 26 }, ref) => {
+const ExportCardRenderer = forwardRef<HTMLDivElement, ExportCardRendererProps>(({ data, layoutSrc, descriptionFontSize: externalFontSize }, ref) => {
+
+    // Internal text fitter for when no external font size is provided (e.g. batch export)
+    const descContainerRef = useRef<HTMLDivElement>(null);
+    const [internalFontSize, setInternalFontSize] = useState(26);
+    const hasExternalFontSize = externalFontSize !== undefined;
+
+    useEffect(() => {
+        // Skip if external font size is provided (single card export)
+        if (hasExternalFontSize) return;
+        if (!descContainerRef.current) return;
+
+        const container = descContainerRef.current;
+        const baseMaxHeight = 325;
+        const scaleFactor = (data.descriptionBoxScale || 100) / 100;
+        const maxHeight = baseMaxHeight * scaleFactor * 2; // *2 because export is at native resolution (661px vs 330px)
+
+        const textEl = container.querySelector('.export-description-text') as HTMLElement;
+        if (!textEl) {
+            setInternalFontSize(26);
+            return;
+        }
+
+        // Reset to base size directly on DOM
+        let fontSize = 26;
+        textEl.style.fontSize = `${fontSize}px`;
+
+        requestAnimationFrame(() => {
+            while (container.scrollHeight > maxHeight && fontSize > 16) {
+                fontSize -= 1;
+                textEl.style.fontSize = `${fontSize}px`;
+            }
+            setInternalFontSize(fontSize);
+        });
+    }, [data.description, data.badStuff, data.restrictions, data.type, data.descriptionBoxScale, hasExternalFontSize]);
+
+    const descriptionFontSize = hasExternalFontSize ? externalFontSize : internalFontSize;
 
     // --- HELPERS ---
     const getDiamondInfo = () => {
@@ -122,6 +158,7 @@ const ExportCardRenderer = forwardRef<HTMLDivElement, ExportCardRendererProps>((
                     (data.restrictions && data.restrictions.trim() !== '') ||
                     (data.type === CardType.MONSTER && data.badStuff && data.badStuff.trim() !== '')) && (
                         <div className="absolute z-30"
+                            ref={descContainerRef}
                             style={{
                                 left: '60px',
                                 top: '229px',
@@ -141,8 +178,8 @@ const ExportCardRenderer = forwardRef<HTMLDivElement, ExportCardRendererProps>((
                                     background: 'radial-gradient(ellipse at center, transparent 40%, rgba(0, 0, 0, 0.35) 100%)'
                                 }}
                             />
-                            <div className="relative w-full text-center font-munchkin-body font-medium text-black p-4"
-                                style={{ fontSize: `${descriptionFontSize}px`, lineHeight: '1.2' }}>
+                            <div className="export-description-text relative w-full text-center font-munchkin-body font-medium text-black p-4"
+                                style={{ fontSize: `${descriptionFontSize}px`, lineHeight: '1.1' }}>
                                 {data.restrictions && (
                                     <div className="font-bold uppercase mb-2">{data.restrictions}</div>
                                 )}

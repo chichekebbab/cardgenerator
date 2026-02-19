@@ -51,16 +51,27 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data, index }) => {
         const scaleFactor = (data.descriptionBoxScale || 100) / 100;
         const maxHeight = scaleY(baseMaxHeight * scaleFactor);
 
-        // Reset to base size
-        let fontSize = 13;
-        setDescriptionFontSize(fontSize);
+        // On manipule directement le DOM pour mesurer le scrollHeight
+        // car React batch les setState et scrollHeight ne se met pas à jour entre les appels
+        const textEl = container.querySelector('.description-text-content') as HTMLElement;
+        if (!textEl) {
+            setDescriptionFontSize(13);
+            return;
+        }
 
-        // Use requestAnimationFrame to ensure DOM is updated
+        // Reset to base size directly on DOM
+        let fontSize = 13;
+        textEl.style.fontSize = `${fontSize}px`;
+
+        // Use requestAnimationFrame to ensure DOM layout is computed
         requestAnimationFrame(() => {
+            // Re-measure after DOM update
             while (container.scrollHeight > maxHeight && fontSize > 8) {
                 fontSize -= 0.5;
-                setDescriptionFontSize(fontSize);
+                textEl.style.fontSize = `${fontSize}px`;
             }
+            // Commit final value to React state
+            setDescriptionFontSize(fontSize);
         });
     }, [data.description, data.badStuff, data.restrictions, data.type, data.descriptionBoxScale]);
 
@@ -393,7 +404,7 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data, index }) => {
                                         background: 'radial-gradient(ellipse at center, transparent 40%, rgba(0, 0, 0, 0.35) 100%)'
                                     }}
                                 />
-                                <div className="relative w-full text-center font-munchkin-body font-medium text-black p-2"
+                                <div className="description-text-content relative w-full text-center font-munchkin-body font-medium text-black p-2"
                                     style={{ fontSize: `${descriptionFontSize}px`, lineHeight: '1.1' }}>
                                     {data.restrictions && (
                                         <div className="font-bold uppercase mb-1">{data.restrictions}</div>
@@ -536,6 +547,7 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data, index }) => {
                         ref={exportRef}
                         data={data}
                         layoutSrc={layoutSrc}
+                        descriptionFontSize={descriptionFontSize * 2}
                     />
                 </div>
             )}
