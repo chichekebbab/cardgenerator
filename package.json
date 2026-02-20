@@ -29,6 +29,7 @@
     "@google/genai": "^1.38.0",
     "html-to-image": "^1.11.13",
     "html2canvas": "1.4.1",
+    "jspdf": "^4.2.0",
     "jszip": "^3.10.1",
     "react": "^19.2.3",
     "react-dom": "^19.2.3"

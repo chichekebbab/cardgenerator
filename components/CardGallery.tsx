@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom';
 import { CardData, CardType, PlaceholderCardData } from '../types';
 import CardThumbnail from './CardThumbnail';
 import BatchExportRenderer from './BatchExportRenderer';
+import BatchPdfExportRenderer from './BatchPdfExportRenderer';
 import PlaceholderCard from './PlaceholderCard';
 import { getCardCategory } from '../utils/layoutUtils';
 import { MONSTER_BALANCE_REFERENCE, getTargetCountForLevel, getTotalMonsterTarget, getRecommendedValues, getAllTargets } from '../utils/balancingConfig';
@@ -78,6 +79,7 @@ const CardGallery: React.FC<CardGalleryProps> = ({
   const [isExportingSelection, setIsExportingSelection] = useState(false);
   const [exportProgress, setExportProgress] = useState({ current: 0, total: 0 });
   const [exportChunkInfo, setExportChunkInfo] = useState<{ chunk: number; totalChunks: number } | null>(null);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [exportMode, setExportMode] = useState<'all' | 'Donjon' | 'Tresor'>('all');
   const [sortByLevel, setSortByLevel] = useState(true);
   const [showMissingCards, setShowMissingCards] = useState(true);
@@ -425,7 +427,7 @@ const CardGallery: React.FC<CardGalleryProps> = ({
                       value={exportMode}
                       onChange={(e) => setExportMode(e.target.value as 'all' | 'Donjon' | 'Tresor')}
                       className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-amber-500 focus:border-amber-500 bg-white"
-                      disabled={isExportingSelection}
+                      disabled={isExportingSelection || isExportingPdf}
                     >
                       <option value="all">Tout exporter</option>
                       <option value="Donjon">Sortie Donjon</option>
@@ -455,6 +457,32 @@ const CardGallery: React.FC<CardGalleryProps> = ({
                         </svg>
                       )}
                       <span>ZIP</span>
+                    </button>
+                    {/* BAT Button */}
+                    <button
+                      onClick={() => {
+                        const cardsToExport = filteredCards.filter(c => {
+                          if (exportMode === 'all') return true;
+                          return getCardCategory(c) === exportMode;
+                        });
+                        if (cardsToExport.length === 0) {
+                          alert('Aucune carte de ce type à exporter.');
+                          return;
+                        }
+                        setExportProgress({ current: 0, total: cardsToExport.length });
+                        setIsExportingPdf(true);
+                      }}
+                      disabled={isExportingSelection || isExportingPdf}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm transition-colors"
+                    >
+                      {isExportingPdf ? (
+                        <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                        </svg>
+                      )}
+                      <span>BAT</span>
                     </button>
                   </div>
                 )}
@@ -824,6 +852,60 @@ const CardGallery: React.FC<CardGalleryProps> = ({
               })}
               onComplete={() => {
                 setIsExportingSelection(false);
+                setExportChunkInfo(null);
+              }}
+              onProgress={(current, total, chunkInfo) => {
+                setExportProgress({ current, total });
+                if (chunkInfo) setExportChunkInfo(chunkInfo);
+              }}
+            />
+          </>
+        )
+      }
+      {/* PDF Export Overlay */}
+      {
+        isExportingPdf && (
+          <>
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+              <div className="bg-white rounded-xl p-8 shadow-2xl max-w-sm w-full text-center">
+                <h3 className="text-xl font-bold text-gray-800 mb-4">Génération PDF en cours...</h3>
+                <div className="w-full bg-gray-200 rounded-full h-4 mb-2 overflow-hidden">
+                  <div
+                    className="bg-indigo-600 h-full transition-all duration-300 ease-out"
+                    style={{ width: `${(exportProgress.current / (exportProgress.total || 1)) * 100}%` }}
+                  />
+                </div>
+                <div className="flex justify-between text-sm text-gray-600">
+                  <span>Carte {exportProgress.current} / {exportProgress.total}</span>
+                  <span>{Math.round((exportProgress.current / (exportProgress.total || 1)) * 100)}%</span>
+                </div>
+                {exportChunkInfo && exportChunkInfo.totalChunks > 1 && (
+                  <p className="text-sm text-indigo-600 font-medium mt-2">
+                    📦 Fichier {exportChunkInfo.chunk} / {exportChunkInfo.totalChunks}
+                  </p>
+                )}
+                <p className="text-xs text-gray-400 mt-3">
+                  {exportChunkInfo && exportChunkInfo.totalChunks > 1
+                    ? `Chaque fichier PDF (9 planches) sera téléchargé automatiquement.`
+                    : `Veuillez patienter pendant la génération du fichier PDF.`
+                  }
+                </p>
+                <button
+                  onClick={() => setIsExportingPdf(false)}
+                  className="mt-4 px-5 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-medium rounded-lg shadow transition-colors"
+                >
+                  ✕ Annuler
+                </button>
+              </div>
+            </div>
+
+            <BatchPdfExportRenderer
+              cards={filteredCards.filter(c => {
+                if (exportMode === 'all') return true;
+                return getCardCategory(c) === exportMode;
+              })}
+              onComplete={() => {
+                setIsExportingPdf(false);
                 setExportChunkInfo(null);
               }}
               onProgress={(current, total, chunkInfo) => {
