@@ -30,44 +30,50 @@ Un générateur de cartes Munchkin personnalisées avec intelligence artificiell
 - **Clés API** (optionnelles) :
   - [Clé API Google Gemini](https://aistudio.google.com/app/apikey) - pour la génération d'images
   - [Clé API Remove.bg](https://www.remove.bg/api) - pour la suppression d'arrière-plan
-  
+
   > **Note** : Les clés API peuvent être fournies de deux manières :
+  >
   > 1. **Côté serveur** : Via `.env.local` pour le développement local ou variables d'environnement en production
   > 2. **Côté client** : Directement par l'utilisateur via l'interface de paramètres (stockées dans le navigateur)
 
 ### Installation
 
 1. **Cloner le repository**
+
    ```bash
    git clone https://github.com/chichekebbab/cardgenerator.git
    cd cardgenerator
    ```
 
 2. **Installer les dépendances**
+
    ```bash
    npm install
    ```
 
 3. **Configurer les variables d'environnement** (optionnel)
-   
+
    Si vous souhaitez configurer les clés API côté serveur, copiez le fichier `.env.example` vers `.env.local` :
+
    ```bash
    cp .env.example .env.local
    ```
-   
+
    Éditez `.env.local` et ajoutez vos clés API :
+
    ```env
    VITE_GEMINI_API_KEY=votre_clé_gemini_ici
    VITE_REMOVE_BG_API_KEY=votre_clé_removebg_ici
    ```
-   
+
    > **Alternative** : Vous pouvez sauter cette étape et configurer les clés directement via l'interface de l'application (roue des paramètres).
 
 4. **Lancer l'application en mode développement**
+
    ```bash
    npm run dev
    ```
-   
+
    L'application sera accessible sur `http://localhost:5173`
 
 5. **Builder pour la production**
@@ -94,6 +100,7 @@ Les utilisateurs peuvent configurer leurs propres clés API directement via l'in
 4. Aucune configuration serveur requise !
 
 **Avantages** :
+
 - ✅ Chaque utilisateur utilise ses propres quotas API
 - ✅ Pas besoin de partager vos clés
 - ✅ Parfait pour un déploiement public
@@ -116,6 +123,8 @@ Pour le développement local, vous pouvez configurer des clés par défaut :
 4. Ajoutez-la dans `.env.local` comme `VITE_REMOVE_BG_API_KEY`
 
 **Note** : Ces clés seront intégrées au build et utilisées comme fallback si l'utilisateur n'a pas configuré ses propres clés.
+
+> **⚠️ Avertissement de sécurité** : Les clés API configurées via `.env` sont intégrées dans le bundle JavaScript côté client (via `import.meta.env`). Elles sont donc **visibles par quiconque inspecte le code source** de l'application déployée. Pour un déploiement public, il est **fortement recommandé** de ne PAS configurer de clés serveur et de laisser les utilisateurs fournir leurs propres clés via l'interface.
 
 ---
 
@@ -176,36 +185,58 @@ Le projet inclut une configuration complète pour Cloud Run :
 
 ```
 générateur-de-cartes-munchkin/
-├── components/          # Composants React
-│   ├── CardForm.tsx    # Formulaire d'édition de cartes
-│   ├── CardGallery.tsx # Galerie de cartes
-│   ├── CardPreview.tsx # Aperçu des cartes
+├── components/              # Composants React
+│   ├── CardForm.tsx         # Formulaire d'édition de cartes
+│   ├── CardGallery.tsx      # Galerie de cartes
+│   ├── CardPreview.tsx      # Aperçu des cartes
+│   ├── CardList.tsx         # Liste détaillée des cartes
+│   ├── DeckStats.tsx        # Tableau de bord statistiques
+│   ├── ImportModal.tsx      # Import CSV/JSON
+│   ├── BatchExportRenderer.tsx    # Export PNG en masse
+│   ├── BatchPdfExportRenderer.tsx # Export PDF en masse
 │   └── ...
-├── services/           # Services API
-│   ├── gemini.ts       # Service Gemini
-│   └── removebg.ts     # Service Remove.bg
-├── utils/              # Utilitaires
-│   └── layoutUtils.ts  # Gestion des layouts
-├── public/             # Assets publics
-├── types.ts            # Types TypeScript
-├── App.tsx             # Composant principal
-├── Dockerfile          # Configuration Docker
-├── cloudbuild.yaml     # Configuration Cloud Build
-├── netlify.toml        # Configuration Netlify
-└── package.json        # Dépendances
+├── services/                # Services API
+│   ├── geminiService.ts     # Service Google Gemini
+│   ├── removeBgService.ts   # Service Remove.bg
+│   └── sheetService.ts      # Service Google Sheets
+├── utils/                   # Utilitaires
+│   ├── layoutUtils.ts       # Gestion des layouts et noms de fichiers
+│   ├── balancingConfig.ts   # Configuration d'équilibrage
+│   ├── baseDeckConfig.ts    # Configuration du deck de base
+│   └── goldFormatter.ts     # Formatage des trésors/or
+├── tests/                   # Tests unitaires (Vitest)
+├── public/                  # Assets publics (layouts, textures)
+├── .github/                 # CI/CD, templates issues/PR
+├── types.ts                 # Types TypeScript
+├── App.tsx                  # Composant principal
+├── Dockerfile               # Configuration Docker
+├── cloudbuild.yaml          # Configuration Cloud Build
+├── netlify.toml             # Configuration Netlify
+└── package.json             # Dépendances
 ```
 
 ---
 
 ## 🤝 Contribution
 
-Les contributions sont les bienvenues ! N'hésitez pas à :
+Les contributions sont les bienvenues ! Consultez le guide complet dans [CONTRIBUTING.md](CONTRIBUTING.md).
+
+En résumé :
 
 1. Fork le projet
-2. Créer une branche (`git checkout -b feature/AmazingFeature`)
-3. Commit vos changements (`git commit -m 'Add some AmazingFeature'`)
-4. Push vers la branche (`git push origin feature/AmazingFeature`)
+2. Créer une branche (`git checkout -b feat/amazing-feature`)
+3. Commit vos changements (`git commit -m 'feat: add some amazing feature'`)
+4. Push vers la branche (`git push origin feat/amazing-feature`)
 5. Ouvrir une Pull Request
+
+### Scripts utiles
+
+```bash
+npm run dev          # Serveur de développement
+npm run lint         # Vérifier le code
+npm run test:ci      # Lancer les tests
+npm run build        # Build de production
+```
 
 ---
 
