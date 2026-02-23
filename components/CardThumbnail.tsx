@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CardData, CardType } from '../types';
 import { formatBonus } from '../utils/layoutUtils';
+import { useTranslation } from '../i18n/LanguageContext';
 
 interface CardThumbnailProps {
   card: CardData;
@@ -11,6 +12,7 @@ interface CardThumbnailProps {
 const CardThumbnail: React.FC<CardThumbnailProps> = ({ card, onClick, isSelected = false }) => {
   const [imgError, setImgError] = useState(false);
   const [displaySrc, setDisplaySrc] = useState<string | undefined>(undefined);
+  const { t } = useTranslation();
 
   // Handle image source similar to CardPreview
   useEffect(() => {
@@ -46,21 +48,61 @@ const CardThumbnail: React.FC<CardThumbnailProps> = ({ card, onClick, isSelected
   const getTypeColor = () => {
     switch (card.type) {
       case CardType.MONSTER:
-        return { bg: 'bg-red-100', border: 'border-red-300', text: 'text-red-800', badge: 'bg-red-600' };
+        return {
+          bg: 'bg-red-100',
+          border: 'border-red-300',
+          text: 'text-red-800',
+          badge: 'bg-red-600',
+        };
       case CardType.CURSE:
-        return { bg: 'bg-purple-100', border: 'border-purple-300', text: 'text-purple-800', badge: 'bg-purple-600' };
+        return {
+          bg: 'bg-purple-100',
+          border: 'border-purple-300',
+          text: 'text-purple-800',
+          badge: 'bg-purple-600',
+        };
       case CardType.ITEM:
-        return { bg: 'bg-amber-100', border: 'border-amber-300', text: 'text-amber-800', badge: 'bg-amber-600' };
+        return {
+          bg: 'bg-amber-100',
+          border: 'border-amber-300',
+          text: 'text-amber-800',
+          badge: 'bg-amber-600',
+        };
       case CardType.CLASS:
-        return { bg: 'bg-blue-100', border: 'border-blue-300', text: 'text-blue-800', badge: 'bg-blue-600' };
+        return {
+          bg: 'bg-blue-100',
+          border: 'border-blue-300',
+          text: 'text-blue-800',
+          badge: 'bg-blue-600',
+        };
       case CardType.RACE:
-        return { bg: 'bg-green-100', border: 'border-green-300', text: 'text-green-800', badge: 'bg-green-600' };
+        return {
+          bg: 'bg-green-100',
+          border: 'border-green-300',
+          text: 'text-green-800',
+          badge: 'bg-green-600',
+        };
       case CardType.FAITHFUL_SERVANT:
-        return { bg: 'bg-indigo-100', border: 'border-indigo-300', text: 'text-indigo-800', badge: 'bg-indigo-600' };
+        return {
+          bg: 'bg-indigo-100',
+          border: 'border-indigo-300',
+          text: 'text-indigo-800',
+          badge: 'bg-indigo-600',
+        };
       case CardType.LEVEL_UP:
-        return { bg: 'bg-cyan-100', border: 'border-cyan-300', text: 'text-cyan-800', badge: 'bg-cyan-600' };
+        return {
+          bg: 'bg-cyan-100',
+          border: 'border-cyan-300',
+          text: 'text-cyan-800',
+          badge: 'bg-cyan-600',
+        };
       default:
-        return { bg: 'bg-gray-100', border: 'border-gray-300', text: 'text-gray-800', badge: 'bg-gray-600' };
+        return {
+          bg: 'bg-gray-100',
+          border: 'border-gray-300',
+          text: 'text-gray-800',
+          badge: 'bg-gray-600',
+        };
     }
   };
 
@@ -97,9 +139,10 @@ const CardThumbnail: React.FC<CardThumbnailProps> = ({ card, onClick, isSelected
         hover:scale-105 hover:shadow-xl hover:z-10
         focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2
         ${isSelected ? 'ring-2 ring-amber-500 scale-105 shadow-xl' : 'shadow-md'}
-        ${card.isValidated
-          ? 'ring-4 ring-yellow-400 shadow-[0_0_20px_rgba(234,179,8,0.5)] border-yellow-400 border-4'
-          : `${colors.bg} ${colors.border} border-2`
+        ${
+          card.isValidated
+            ? 'ring-4 ring-yellow-400 shadow-[0_0_20px_rgba(234,179,8,0.5)] border-yellow-400 border-4'
+            : `${colors.bg} ${colors.border} border-2`
         }
       `}
     >
@@ -128,12 +171,14 @@ const CardThumbnail: React.FC<CardThumbnailProps> = ({ card, onClick, isSelected
       {card.isValidated && (
         <div className="absolute top-2 left-2 bg-gradient-to-r from-yellow-400 to-yellow-500 text-yellow-900 text-[10px] font-bold px-2 py-1 rounded-full shadow-lg flex items-center gap-1 z-10 animate-pulse">
           <span>✓</span>
-          <span>Validée</span>
+          <span>{t('cardThumbnail.validated')}</span>
         </div>
       )}
 
       {/* Type badge */}
-      <div className={`absolute top-2 right-2 ${colors.badge} text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm`}>
+      <div
+        className={`absolute top-2 right-2 ${colors.badge} text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm`}
+      >
         {getTypeEmoji()} {card.type}
       </div>
 
@@ -143,21 +188,22 @@ const CardThumbnail: React.FC<CardThumbnailProps> = ({ card, onClick, isSelected
           {card.level}
         </div>
       )}
-      {(card.type === CardType.ITEM || card.type === CardType.FAITHFUL_SERVANT || card.type === CardType.LEVEL_UP) && card.bonus !== '' && (
-        <div className="absolute top-2 left-2 bg-amber-700 text-white text-[10px] font-bold min-w-[2rem] h-8 px-1 rounded-full flex items-center justify-center shadow-sm">
-          {formatBonus(card.bonus)}
-        </div>
-      )}
+      {(card.type === CardType.ITEM ||
+        card.type === CardType.FAITHFUL_SERVANT ||
+        card.type === CardType.LEVEL_UP) &&
+        card.bonus !== '' && (
+          <div className="absolute top-2 left-2 bg-amber-700 text-white text-[10px] font-bold min-w-[2rem] h-8 px-1 rounded-full flex items-center justify-center shadow-sm">
+            {formatBonus(card.bonus)}
+          </div>
+        )}
 
       {/* Card title */}
       <div className="absolute bottom-0 left-0 right-0 p-3 text-left">
         <h3 className="text-white font-bold text-sm leading-tight line-clamp-2 drop-shadow-lg">
-          {card.title || 'Sans Titre'}
+          {card.title || t('cardThumbnail.untitled')}
         </h3>
         {card.description && (
-          <p className="text-white/70 text-[10px] mt-1 line-clamp-1">
-            {card.description}
-          </p>
+          <p className="text-white/70 text-[10px] mt-1 line-clamp-1">{card.description}</p>
         )}
       </div>
 
@@ -167,8 +213,19 @@ const CardThumbnail: React.FC<CardThumbnailProps> = ({ card, onClick, isSelected
       {/* Click indicator */}
       <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
         <div className="bg-white/90 rounded-full p-2 shadow-lg">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-6 w-6 text-amber-600"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+            />
           </svg>
         </div>
       </div>

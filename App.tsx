@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import CardForm from './components/CardForm';
 import CardPreview from './components/CardPreview';
 import DeckStats from './components/DeckStats';
@@ -12,6 +12,7 @@ import CardNavigation from './components/CardNavigation';
 import { CardData, INITIAL_CARD_DATA, GlobalSettings, DEFAULT_GLOBAL_SETTINGS } from './types';
 import { saveCardToSheet, fetchCardsFromSheet, deleteCardFromSheet } from './services/sheetService';
 import { useNotification } from './components/NotificationContext';
+import { useTranslation } from './i18n/LanguageContext';
 
 const GOOGLE_SCRIPT_TEMPLATE = `// CODE À COPIER DANS VOTRE GOOGLE APPS SCRIPT (fichier Code.gs)
 
@@ -164,6 +165,8 @@ function responseJSON(data) {
 }`;
 
 const App: React.FC = () => {
+  const { t } = useTranslation();
+
   // Initialisation avec ID unique si manquant
   const initCard = {
     ...INITIAL_CARD_DATA,
@@ -285,10 +288,11 @@ const App: React.FC = () => {
     try {
       const cards = await fetchCardsFromSheet(url);
       setSavedCards(cards.reverse()); // Les plus récents en premier
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('Erreur chargement cartes', e);
       // Détection sommaire des erreurs de configuration/CORS
-      if (e.message.includes('Failed to fetch') || e.message.includes('Erreur HTTP')) {
+      const errMsg = e instanceof Error ? e.message : String(e);
+      if (errMsg.includes('Failed to fetch') || errMsg.includes('Erreur HTTP')) {
         setConfigError('Impossible de communiquer avec Google Script.');
       }
     } finally {
@@ -306,7 +310,7 @@ const App: React.FC = () => {
     showNotification('Paramètres enregistrés !', 'success');
   };
 
-  const handleSaveCard = async (cardToSave?: CardData | any) => {
+  const handleSaveCard = async (cardToSave?: CardData | React.SyntheticEvent | unknown) => {
     // Detect if we received a valid CardData object or an event/undefined
     // Events have properties like 'target', 'preventDefault', 'nativeEvent', etc.
     // CardData has 'id', 'title', 'type', etc.
@@ -432,9 +436,12 @@ const App: React.FC = () => {
           return currentCardData; // No change needed, already updated above
         });
       }, 2000);
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('[SAVE] Save error:', e);
-      showNotification('Erreur lors de la sauvegarde : ' + e.message, 'error');
+      showNotification(
+        'Erreur lors de la sauvegarde : ' + (e instanceof Error ? e.message : String(e)),
+        'error',
+      );
     } finally {
       console.log('[SAVE] Save process completed');
       setIsSaving(false);
@@ -457,8 +464,11 @@ const App: React.FC = () => {
       await loadSavedCards(scriptUrl);
       handleNewCard();
       showNotification('Carte supprimée !', 'success');
-    } catch (e: any) {
-      showNotification('Erreur lors de la suppression : ' + e.message, 'error');
+    } catch (e: unknown) {
+      showNotification(
+        'Erreur lors de la suppression : ' + (e instanceof Error ? e.message : String(e)),
+        'error',
+      );
     } finally {
       setIsSaving(false);
     }
@@ -484,6 +494,7 @@ const App: React.FC = () => {
       ...INITIAL_CARD_DATA,
       id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(),
       imagePrePrompt: globalSettings.defaultImagePrePrompt, // Use custom pre-prompt
+      storedImageUrl: undefined, // Clear demo image for new cards
     };
     setCardData(initialData ? { ...baseCard, ...initialData } : baseCard);
     setActiveView('editor'); // Switch to editor when creating new card
@@ -560,24 +571,28 @@ const App: React.FC = () => {
   };
 
   // Navigate to next/previous card of the same type
-  const navigateToSiblingCard = (direction: 'prev' | 'next') => {
-    const sameTypeCards = getSameTypeCards(cardData);
-    if (sameTypeCards.length <= 1) return; // No siblings to navigate to
+  const navigateToSiblingCard = useCallback(
+    (direction: 'prev' | 'next') => {
+      // Get cards of the same type, sorted oldest first (since savedCards is newest first)
+      const sameTypeCards = savedCards.filter((card) => card.type === cardData.type).reverse();
+      if (sameTypeCards.length <= 1) return; // No siblings to navigate to
 
-    const currentIndex = sameTypeCards.findIndex((c) => c.id === cardData.id);
-    if (currentIndex === -1) return; // Current card not found
+      const currentIndex = sameTypeCards.findIndex((c) => c.id === cardData.id);
+      if (currentIndex === -1) return; // Current card not found
 
-    let newIndex: number;
-    if (direction === 'next') {
-      newIndex = (currentIndex + 1) % sameTypeCards.length;
-    } else {
-      newIndex = (currentIndex - 1 + sameTypeCards.length) % sameTypeCards.length;
-    }
+      let newIndex: number;
+      if (direction === 'next') {
+        newIndex = (currentIndex + 1) % sameTypeCards.length;
+      } else {
+        newIndex = (currentIndex - 1 + sameTypeCards.length) % sameTypeCards.length;
+      }
 
-    setCardData(sameTypeCards[newIndex]);
-    setHasUnsavedChanges(false); // Loading a saved card, no changes yet
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+      setCardData(sameTypeCards[newIndex]);
+      setHasUnsavedChanges(false); // Loading a saved card, no changes yet
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    },
+    [cardData, savedCards],
+  );
 
   // Detect changes to cardData to mark as having unsaved changes
   useEffect(() => {
@@ -591,7 +606,7 @@ const App: React.FC = () => {
         cardData.title !== INITIAL_CARD_DATA.title ||
         cardData.description !== INITIAL_CARD_DATA.description ||
         cardData.imageData !== null ||
-        cardData.storedImageUrl !== undefined ||
+        cardData.storedImageUrl !== INITIAL_CARD_DATA.storedImageUrl ||
         cardData.imagePrompt !== INITIAL_CARD_DATA.imagePrompt ||
         cardData.internalComment !== INITIAL_CARD_DATA.internalComment;
 
@@ -650,7 +665,7 @@ const App: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeView, savedCards, cardData]); // Dependencies to keep the handler updated
+  }, [activeView, savedCards, cardData, navigateToSiblingCard]); // Dependencies to keep the handler updated
 
   // Quick update for inline editing in list view (silent save)
   const handleQuickUpdateCard = async (updatedCard: CardData) => {
@@ -676,7 +691,7 @@ const App: React.FC = () => {
       setTimeout(() => {
         setListSaveStatus('idle');
       }, 2000);
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('Erreur lors de la sauvegarde rapide:', e);
       setListSaveStatus('error');
 
@@ -702,18 +717,15 @@ const App: React.FC = () => {
             <div className="flex items-center gap-3">
               <div className="text-3xl">🗡️</div>
               <div>
-                <h1 className="text-xl font-bold tracking-wider">MunchkinGen</h1>
-                <p className="text-xs text-amber-200 opacity-80">
-                  Complétez votre jeu avec vos propres cartes, ou construisez votre deck entièrement
-                  !
-                </p>
+                <h1 className="text-xl font-bold tracking-wider">{t('app.title')}</h1>
+                <p className="text-xs text-amber-200 opacity-80">{t('app.subtitle')}</p>
               </div>
             </div>
             <div className="flex items-center gap-4">
               <button
                 onClick={() => setShowSettings(!showSettings)}
                 className={`transition-colors ${configError ? 'text-red-400 animate-pulse' : 'text-amber-200 hover:text-white'}`}
-                title="Configuration Base de Données"
+                title={t('app.configDb')}
               >
                 ⚙️
               </button>
@@ -738,7 +750,7 @@ const App: React.FC = () => {
               }`}
             >
               <span className="mr-2">✏️</span>
-              Éditeur
+              {t('app.editor')}
             </button>
             <button
               onClick={() => setActiveView('gallery')}
@@ -749,7 +761,7 @@ const App: React.FC = () => {
               }`}
             >
               <span>🎴</span>
-              Galerie
+              {t('app.gallery')}
               {savedCards.length > 0 && (
                 <span
                   className={`text-xs px-1.5 py-0.5 rounded-full ${
@@ -771,7 +783,7 @@ const App: React.FC = () => {
               }`}
             >
               <span>📋</span>
-              Liste
+              {t('app.list')}
             </button>
             <button
               onClick={() => setActiveView('settings')}
@@ -782,7 +794,7 @@ const App: React.FC = () => {
               }`}
             >
               <span>⚙️</span>
-              Paramètres
+              {t('app.settings')}
             </button>
           </nav>
         </div>
@@ -793,7 +805,7 @@ const App: React.FC = () => {
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
           <div className="bg-stone-800 text-white w-full max-w-4xl rounded-lg shadow-2xl border border-amber-600 flex flex-col max-h-[90vh]">
             <div className="flex justify-between items-center p-4 border-b border-stone-700">
-              <h3 className="text-lg font-bold text-amber-500">Configuration Backend</h3>
+              <h3 className="text-lg font-bold text-amber-500">{t('configModal.title')}</h3>
               <button
                 onClick={() => {
                   setShowSettings(false);
@@ -810,13 +822,13 @@ const App: React.FC = () => {
                 onClick={() => setActiveTab('config')}
                 className={`flex-1 p-3 text-sm font-bold ${activeTab === 'config' ? 'bg-stone-700 text-amber-400 border-b-2 border-amber-500' : 'text-gray-400 hover:bg-stone-700'}`}
               >
-                Connexion
+                {t('configModal.tabConnection')}
               </button>
               <button
                 onClick={() => setActiveTab('code')}
                 className={`flex-1 p-3 text-sm font-bold ${activeTab === 'code' ? 'bg-stone-700 text-amber-400 border-b-2 border-amber-500' : 'text-gray-400 hover:bg-stone-700'}`}
               >
-                Code Script Google (Copier/Coller)
+                {t('configModal.tabCode')}
               </button>
             </div>
 
@@ -824,68 +836,37 @@ const App: React.FC = () => {
               {activeTab === 'config' ? (
                 <div className="space-y-6">
                   <div className="bg-stone-900/50 p-4 rounded-lg border border-stone-700 space-y-4">
-                    <p className="text-sm text-amber-100">
-                      Cet outil a besoin d'une base de données pour sauvegarder vos cartes. Vous
-                      pouvez en créer une <strong>gratuitement</strong> et{' '}
-                      <strong>facilement</strong> avec Google Sheets.
-                    </p>
+                    <p className="text-sm text-amber-100">{t('configModal.guideDesc')}</p>
 
                     <div className="bg-amber-900/20 border border-amber-500/30 rounded p-4 text-sm text-amber-100/90">
-                      <p className="font-bold mb-3 text-amber-400">Guide d'installation :</p>
+                      <p className="font-bold mb-3 text-amber-400">{t('configModal.guideTitle')}</p>
                       <ol className="list-decimal ml-5 space-y-2 text-xs">
+                        <li>{t('configModal.guideStep1')}</li>
+                        <li>{t('configModal.guideStep2')}</li>
+                        <li>{t('configModal.guideStep3')}</li>
+                        <li>{t('configModal.guideStep4')}</li>
+                        <li>{t('configModal.guideStep5')}</li>
+                        <li>{t('configModal.guideStep6')}</li>
                         <li>
-                          Créez un nouveau <strong>Google Sheet</strong> sur votre Drive (doit être
-                          public ou accessible).
-                        </li>
-                        <li>
-                          Dans le fichier, allez au menu <strong>Extensions</strong> &gt;{' '}
-                          <strong>Apps Script</strong>.
-                        </li>
-                        <li>
-                          Copiez le code complet depuis l'onglet{' '}
-                          <strong className="text-amber-300">Code Script Google</strong> de cette
-                          fenêtre.
-                        </li>
-                        <li>
-                          Collez-le dans l'éditeur Apps Script (fichier <code>Code.gs</code>) en
-                          remplaçant le contenu existant.
-                        </li>
-                        <li>
-                          Cliquez sur <strong>Déployer</strong> &gt;{' '}
-                          <strong>Nouveau déploiement</strong>.
-                        </li>
-                        <li>
-                          Cliquez sur la roue dentée "Sélectionnez le type" &gt;{' '}
-                          <strong>Application Web</strong>.
-                        </li>
-                        <li>
-                          Configurez ainsi :
+                          {t('configModal.guideStep7')}
                           <ul className="list-disc ml-4 mt-1 space-y-1 text-amber-200/80">
-                            <li>
-                              Exécuter en tant que : <strong>Moi</strong>
-                            </li>
-                            <li>
-                              Qui a accès : <strong>Tout le monde</strong> (Important pour que l'app
-                              fonctionne)
-                            </li>
+                            <li>{t('configModal.guideStep7_1')}</li>
+                            <li>{t('configModal.guideStep7_2')}</li>
                           </ul>
                         </li>
-                        <li>
-                          Cliquez sur <strong>Déployer</strong>, copiez l'URL de l'application Web
-                          et collez-la ci-dessous.
-                        </li>
+                        <li>{t('configModal.guideStep8')}</li>
                       </ol>
                     </div>
 
                     <div>
                       <label className="block text-sm mb-2 text-amber-100 font-bold">
-                        URL de l'application Web (Google Apps Script)
+                        {t('configModal.urlLabel')}
                       </label>
                       <input
                         type="text"
                         value={scriptUrl}
                         onChange={(e) => setScriptUrl(e.target.value)}
-                        placeholder="https://script.google.com/macros/s/..."
+                        placeholder={t('configModal.urlPlaceholder')}
                         className="w-full p-3 rounded bg-stone-950 border border-stone-600 text-amber-100 text-sm font-mono focus:border-amber-500 outline-none placeholder-stone-600"
                       />
                     </div>
@@ -893,17 +874,15 @@ const App: React.FC = () => {
 
                   <div className="bg-stone-900/30 p-4 rounded-lg border border-stone-800 space-y-4">
                     <div className="border-b border-stone-700 pb-2">
-                      <h4 className="text-amber-400 font-bold text-sm">Capacités IA (Optionnel)</h4>
-                      <p className="text-xs text-stone-400 mt-1">
-                        Si vous souhaitez rajouter des capacités IA, comme générer le texte ou
-                        l'image des cartes, ou supprimer le fond des cartes, il vous faut renseigner
-                        des clés API.
-                      </p>
+                      <h4 className="text-amber-400 font-bold text-sm">
+                        {t('configModal.aiTitle')}
+                      </h4>
+                      <p className="text-xs text-stone-400 mt-1">{t('configModal.aiDesc')}</p>
                     </div>
 
                     <div>
                       <label className="block text-sm mb-2 text-amber-100 font-bold">
-                        Clé API remove.bg (suppression d'arrière-plan)
+                        {t('configModal.removeBgLabel')}
                       </label>
                       <input
                         type="text"
@@ -913,12 +892,11 @@ const App: React.FC = () => {
                           setRemoveBgApiKey(newVal);
                           localStorage.setItem('removebg_api_key', newVal);
                         }}
-                        placeholder="Votre clé API remove.bg"
+                        placeholder={t('configModal.removeBgPlaceholder')}
                         className="w-full p-3 rounded bg-stone-950 border border-stone-600 text-amber-100 text-sm font-mono focus:border-amber-500 outline-none placeholder-stone-600"
                       />
                       <p className="text-xs text-stone-500 mt-1">
-                        Si vide, la clé par défaut du serveur sera utilisée (si disponible). Obtenez
-                        votre clé API sur{' '}
+                        {t('configModal.removeBgHint')}{' '}
                         <a
                           href="https://www.remove.bg/api"
                           target="_blank"
@@ -931,7 +909,7 @@ const App: React.FC = () => {
 
                     <div>
                       <label className="block text-sm mb-2 text-amber-100 font-bold">
-                        Clé API Gemini (Génération d'images)
+                        {t('configModal.geminiLabel')}
                       </label>
                       <input
                         type="text"
@@ -941,12 +919,11 @@ const App: React.FC = () => {
                           setGeminiApiKey(newVal);
                           localStorage.setItem('gemini_api_key', newVal);
                         }}
-                        placeholder="Votre clé API Google AI Studio"
+                        placeholder={t('configModal.geminiPlaceholder')}
                         className="w-full p-3 rounded bg-stone-950 border border-stone-600 text-amber-100 text-sm font-mono focus:border-amber-500 outline-none placeholder-stone-600"
                       />
                       <p className="text-xs text-stone-500 mt-1">
-                        Si vide, la clé par défaut du serveur sera utilisée (si disponible). Obtenez
-                        une clé sur{' '}
+                        {t('configModal.geminiHint')}{' '}
                         <a
                           href="https://aistudio.google.com/app/apikey"
                           target="_blank"
@@ -963,21 +940,19 @@ const App: React.FC = () => {
                       onClick={handleScriptUrlSave}
                       className="bg-amber-600 px-8 py-2.5 rounded font-bold hover:bg-amber-500 text-white shadow-lg transition-all active:scale-95"
                     >
-                      Sauvegarder les paramètres
+                      {t('configModal.saveBtn')}
                     </button>
                   </div>
 
                   {configError && (
                     <div className="bg-red-900/40 border border-red-500/50 rounded p-4 text-sm text-red-100 space-y-2">
-                      <p className="font-bold flex items-center gap-2">⚠️ {configError}</p>
-                      <p>Vérifiez que votre déploiement est configuré ainsi :</p>
+                      <p className="font-bold flex items-center gap-2">
+                        ⚠️ {t('configModal.configErrorTitle')}: {configError}
+                      </p>
+                      <p>{t('configModal.configErrorSub')}</p>
                       <ul className="list-disc ml-5 space-y-1 text-amber-100/80 text-xs">
-                        <li>
-                          Exécuter en tant que : <strong>Moi</strong>
-                        </li>
-                        <li>
-                          Qui a accès : <strong>Tout le monde</strong>
-                        </li>
+                        <li>{t('configModal.configErrorStep1')}</li>
+                        <li>{t('configModal.configErrorStep2')}</li>
                       </ul>
                     </div>
                   )}
@@ -985,15 +960,12 @@ const App: React.FC = () => {
               ) : (
                 <div className="space-y-4 h-full flex flex-col">
                   <div className="flex justify-between items-center">
-                    <p className="text-sm text-amber-100/80">
-                      Ce code utilise maintenant votre <strong>premier onglet</strong> (quel que
-                      soit son nom) :
-                    </p>
+                    <p className="text-sm text-amber-100/80">{t('configModal.scriptTabDesc')}</p>
                     <button
                       onClick={() => copyToClipboard(GOOGLE_SCRIPT_TEMPLATE)}
                       className="text-xs bg-stone-600 hover:bg-stone-500 text-white px-3 py-1 rounded border border-stone-500"
                     >
-                      Copier le code
+                      {t('configModal.copyCode')}
                     </button>
                   </div>
                   <div className="flex-grow relative border border-stone-600 rounded bg-stone-950">
@@ -1049,7 +1021,7 @@ const App: React.FC = () => {
               <div className="lg:col-span-4 order-1 lg:order-2 lg:sticky lg:top-32">
                 <div className="bg-white rounded-lg shadow-xl overflow-hidden border-2 border-amber-900/10">
                   <div className="bg-gray-50 border-b p-2 text-center text-xs text-gray-500 font-mono uppercase">
-                    Aperçu de la Carte
+                    {t('configModal.previewTitle')}
                   </div>
                   {(() => {
                     const idx = savedCards.findIndex((c) => c.id === cardData.id);

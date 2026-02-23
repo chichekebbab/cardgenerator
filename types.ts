@@ -81,6 +81,14 @@ export interface GlobalSettings {
   // Custom card backs (base64 data URL or null = use default)
   customBackDonjon: string | null;
   customBackTresor: string | null;
+  // Custom layouts (front faces)
+  customLayoutClass: string | null;
+  customLayoutRace: string | null;
+  customLayoutMalediction: string | null;
+  customLayoutEquipement: string | null;
+  customLayoutItem: string | null;
+  customLayoutLvlup: string | null;
+  customLayoutMonstre: string | null;
   // Fonts per text type (Google Fonts family names)
   fontTitle: string;
   fontDescription: string;
@@ -115,6 +123,13 @@ export const AVAILABLE_FONTS = [
 export const DEFAULT_GLOBAL_SETTINGS: GlobalSettings = {
   customBackDonjon: null,
   customBackTresor: null,
+  customLayoutClass: null,
+  customLayoutRace: null,
+  customLayoutMalediction: null,
+  customLayoutEquipement: null,
+  customLayoutItem: null,
+  customLayoutLvlup: null,
+  customLayoutMonstre: null,
   fontTitle: 'Windlass',
   fontDescription: 'Caslon Antique',
   fontMeta: 'MedievalSharp',

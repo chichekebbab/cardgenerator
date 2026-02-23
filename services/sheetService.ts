@@ -41,8 +41,11 @@ const sanitizeCardData = (card: CardData): CardData => {
  * IMPORTANT : On utilise le Content-Type 'text/plain' pour éviter le "Preflight" CORS (OPTIONS)
  * que Google Apps Script ne gère pas nativement.
  */
-export const saveCardToSheet = async (scriptUrl: string, card: CardData): Promise<{ status: string, imageUrl?: string }> => {
-  if (!scriptUrl) throw new Error("URL du Script Google manquante");
+export const saveCardToSheet = async (
+  scriptUrl: string,
+  card: CardData,
+): Promise<{ status: string; imageUrl?: string }> => {
+  if (!scriptUrl) throw new Error('URL du Script Google manquante');
 
   // Sanitize the card data to remove any DOM references or unexpected properties
   const cleanCard = sanitizeCardData(card);
@@ -50,7 +53,7 @@ export const saveCardToSheet = async (scriptUrl: string, card: CardData): Promis
   const response = await fetch(scriptUrl, {
     method: 'POST',
     headers: {
-      "Content-Type": "text/plain;charset=utf-8",
+      'Content-Type': 'text/plain;charset=utf-8',
     },
     body: JSON.stringify({ action: 'save', card: cleanCard }),
   });
@@ -69,6 +72,7 @@ export const saveCardToSheet = async (scriptUrl: string, card: CardData): Promis
  * Google Sheets / JSON can sometimes store booleans as strings ("true"/"false")
  * which causes bugs because "false" is truthy in JavaScript.
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const normalizeCardData = (card: any): CardData => {
   return {
     ...card,
@@ -98,7 +102,7 @@ export const fetchCardsFromSheet = async (scriptUrl: string): Promise<CardData[]
 
   try {
     const response = await fetch(cleanUrl, {
-      method: 'GET'
+      method: 'GET',
     });
 
     if (!response.ok) {
@@ -115,19 +119,22 @@ export const fetchCardsFromSheet = async (scriptUrl: string): Promise<CardData[]
     // Normalize all card data to ensure correct types
     return Array.isArray(data) ? data.map(normalizeCardData) : [];
   } catch (e) {
-    console.error("Erreur détaillée fetchCardsFromSheet:", e);
+    console.error('Erreur détaillée fetchCardsFromSheet:', e);
     // On relance l'erreur pour que l'UI puisse l'afficher ou la logger
     throw e;
   }
 };
 
-export const deleteCardFromSheet = async (scriptUrl: string, cardId: string): Promise<{ status: string }> => {
-  if (!scriptUrl) throw new Error("URL du Script Google manquante");
+export const deleteCardFromSheet = async (
+  scriptUrl: string,
+  cardId: string,
+): Promise<{ status: string }> => {
+  if (!scriptUrl) throw new Error('URL du Script Google manquante');
 
   const response = await fetch(scriptUrl, {
     method: 'POST',
     headers: {
-      "Content-Type": "text/plain;charset=utf-8",
+      'Content-Type': 'text/plain;charset=utf-8',
     },
     body: JSON.stringify({ action: 'delete', cardId }),
   });

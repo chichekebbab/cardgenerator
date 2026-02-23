@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { CardData, CardType } from '../types';
+import { useTranslation } from '../i18n/LanguageContext';
 
 interface ImportModalProps {
   isOpen: boolean;
@@ -81,8 +82,14 @@ const validateCard = (card: Partial<CardData>): boolean => {
 /**
  * Parse input text and extract CardData objects
  */
-const parseImportData = (input: string): ImportResult => {
-  const lines = input.trim().split('\n').filter(line => line.trim());
+const parseImportData = (
+  input: string,
+  t: (key: string, params?: Record<string, string | number>) => string,
+): ImportResult => {
+  const lines = input
+    .trim()
+    .split('\n')
+    .filter((line) => line.trim());
   const success: CardData[] = [];
   const errors: string[] = [];
 
@@ -102,7 +109,7 @@ const parseImportData = (input: string): ImportResult => {
 
       // We expect at least 4 columns: id, title, type, json_data
       if (parts.length < 4) {
-        errors.push(`Ligne ${i + 1}: Format invalide (moins de 4 colonnes)`);
+        errors.push(t('importModal.errorInvalidFormat', { line: i + 1 }));
         continue;
       }
 
@@ -110,7 +117,7 @@ const parseImportData = (input: string): ImportResult => {
       const imageUrl = parts.length > 4 ? parts[4] : ''; // image_url column (optional)
 
       if (!jsonData || jsonData.trim() === '') {
-        errors.push(`Ligne ${i + 1}: Colonne json_data vide`);
+        errors.push(t('importModal.errorEmptyJson', { line: i + 1 }));
         continue;
       }
 
@@ -118,19 +125,21 @@ const parseImportData = (input: string): ImportResult => {
       let cardJson: Partial<CardData>;
       try {
         cardJson = JSON.parse(jsonData);
-      } catch (parseError) {
-        errors.push(`Ligne ${i + 1}: JSON invalide dans json_data`);
+      } catch {
+        errors.push(t('importModal.errorInvalidJson', { line: i + 1 }));
         continue;
       }
 
       // Validate the card
       if (!validateCard(cardJson)) {
-        errors.push(`Ligne ${i + 1}: Carte invalide (titre ou type manquant)`);
+        errors.push(t('importModal.errorInvalidCard', { line: i + 1 }));
         continue;
       }
 
       // Generate new UUID
-      cardJson.id = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      cardJson.id = crypto.randomUUID
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
       // Use image_url from column 5 if present and not already in JSON
       if (imageUrl && imageUrl.trim() !== '' && !cardJson.storedImageUrl) {
@@ -169,9 +178,8 @@ const parseImportData = (input: string): ImportResult => {
       };
 
       success.push(finalCard);
-
-    } catch (e) {
-      errors.push(`Ligne ${i + 1}: Erreur inattendue`);
+    } catch {
+      errors.push(t('importModal.errorUnexpected', { line: i + 1 }));
     }
   }
 
@@ -183,7 +191,7 @@ const parseImportData = (input: string): ImportResult => {
  */
 const groupByType = (cards: CardData[]): Map<CardType, number> => {
   const grouped = new Map<CardType, number>();
-  cards.forEach(card => {
+  cards.forEach((card) => {
     const count = grouped.get(card.type as CardType) || 0;
     grouped.set(card.type as CardType, count + 1);
   });
@@ -191,6 +199,7 @@ const groupByType = (cards: CardData[]): Map<CardType, number> => {
 };
 
 const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onImport }) => {
+  const { t } = useTranslation();
   const [inputText, setInputText] = useState('');
   const [importState, setImportState] = useState<ImportState>('input');
   const [importProgress, setImportProgress] = useState({ current: 0, total: 0 });
@@ -213,16 +222,16 @@ const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onImport }) 
 
   const handleImport = async () => {
     if (!inputText.trim()) {
-      setParseErrors(['Veuillez coller des données à importer']);
+      setParseErrors([t('importModal.errorNoData')]);
       return;
     }
 
     // Parse the input
-    const { success, errors } = parseImportData(inputText);
+    const { success, errors } = parseImportData(inputText, t);
     setParseErrors(errors);
 
     if (success.length === 0) {
-      setParseErrors(prev => [...prev, 'Aucune carte valide trouvée. Vérifiez le format.']);
+      setParseErrors((prev) => [...prev, t('importModal.errorNoValidCards')]);
       return;
     }
 
@@ -239,8 +248,8 @@ const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onImport }) 
       setImportedCards(success);
       setImportProgress({ current: success.length, total: success.length });
       setImportState('success');
-    } catch (e: any) {
-      setImportErrors([e.message || 'Erreur lors de la sauvegarde']);
+    } catch (e: unknown) {
+      setImportErrors([(e instanceof Error ? e.message : String(e)) || t('importModal.errorSave')]);
       setImportState('error');
     }
   };
@@ -254,10 +263,10 @@ const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onImport }) 
         <div className="flex justify-between items-center p-4 border-b border-gray-200 bg-gray-50 rounded-t-lg">
           <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
             <span className="text-xl">📥</span>
-            {importState === 'input' && 'Importer des cartes via JSON'}
-            {importState === 'importing' && 'Importation en cours...'}
-            {importState === 'success' && 'Importation terminée'}
-            {importState === 'error' && 'Erreur d\'importation'}
+            {importState === 'input' && t('importModal.title')}
+            {importState === 'importing' && t('importModal.importing')}
+            {importState === 'success' && t('importModal.success')}
+            {importState === 'error' && t('importModal.error')}
           </h3>
           <button
             onClick={handleClose}
@@ -273,9 +282,7 @@ const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onImport }) 
           {importState === 'input' && (
             <div className="space-y-4">
               <div>
-                <p className="text-sm text-gray-600 mb-2">
-                  Collez vos données au format:
-                </p>
+                <p className="text-sm text-gray-600 mb-2">{t('importModal.formatHint')}</p>
                 <code className="block bg-gray-100 p-2 rounded text-xs text-gray-700 font-mono">
                   id;title;type;json_data;image_url;date
                 </code>
@@ -288,14 +295,16 @@ const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onImport }) 
                     setInputText(e.target.value);
                     setParseErrors([]);
                   }}
-                  placeholder="Collez ici les données à importer..."
+                  placeholder={t('importModal.placeholder')}
                   className="w-full h-64 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 font-mono text-sm resize-none"
                 />
               </div>
 
               {parseErrors.length > 0 && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                  <p className="text-sm font-bold text-red-700 mb-1">Erreurs détectées:</p>
+                  <p className="text-sm font-bold text-red-700 mb-1">
+                    {t('importModal.errorsDetected')}
+                  </p>
                   <ul className="text-xs text-red-600 space-y-1 max-h-32 overflow-y-auto">
                     {parseErrors.map((error, i) => (
                       <li key={i}>• {error}</li>
@@ -305,9 +314,7 @@ const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onImport }) 
               )}
 
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <p className="text-xs text-blue-700">
-                  ℹ️ Chaque ligne correspond à une carte. Un nouvel ID unique sera généré pour chaque carte importée.
-                </p>
+                <p className="text-xs text-blue-700">{t('importModal.idHint')}</p>
               </div>
             </div>
           )}
@@ -321,7 +328,10 @@ const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onImport }) 
                 />
               </div>
               <p className="text-center text-gray-600">
-                {importProgress.current} / {importProgress.total} cartes
+                {t('importModal.cardsCount', {
+                  current: importProgress.current,
+                  total: importProgress.total,
+                })}
               </p>
               <div className="flex justify-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-4 border-amber-500 border-t-transparent"></div>
@@ -334,18 +344,25 @@ const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onImport }) 
               <div className="text-center py-4">
                 <div className="text-5xl mb-3">✅</div>
                 <p className="text-xl font-bold text-green-700">
-                  {importedCards.length} carte{importedCards.length !== 1 ? 's' : ''} importée{importedCards.length !== 1 ? 's' : ''} avec succès !
+                  {t('importModal.importSuccess', {
+                    count: importedCards.length,
+                    plural: importedCards.length !== 1 ? 's' : '',
+                  })}
                 </p>
               </div>
 
               {typeGroups.size > 0 && (
                 <div className="bg-gray-50 rounded-lg p-4">
-                  <p className="text-sm font-bold text-gray-700 mb-2">Répartition par type:</p>
+                  <p className="text-sm font-bold text-gray-700 mb-2">
+                    {t('importModal.repartition')}
+                  </p>
                   <ul className="space-y-1">
                     {Array.from(typeGroups.entries()).map(([type, count]) => (
                       <li key={type} className="text-sm text-gray-600 flex items-center gap-2">
                         <span className="w-4">•</span>
-                        <span>{count} {type}</span>
+                        <span>
+                          {count} {type}
+                        </span>
                       </li>
                     ))}
                   </ul>
@@ -355,14 +372,17 @@ const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onImport }) 
               {parseErrors.length > 0 && (
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                   <p className="text-sm font-bold text-yellow-700 mb-1">
-                    ⚠️ {parseErrors.length} ligne{parseErrors.length !== 1 ? 's' : ''} ignorée{parseErrors.length !== 1 ? 's' : ''} (format invalide)
+                    {t('importModal.ignoredLines', {
+                      count: parseErrors.length,
+                      plural: parseErrors.length !== 1 ? 's' : '',
+                    })}
                   </p>
                   <ul className="text-xs text-yellow-600 space-y-1 max-h-24 overflow-y-auto">
                     {parseErrors.slice(0, 5).map((error, i) => (
                       <li key={i}>• {error}</li>
                     ))}
                     {parseErrors.length > 5 && (
-                      <li>... et {parseErrors.length - 5} autres</li>
+                      <li>{t('importModal.andOthers', { count: parseErrors.length - 5 })}</li>
                     )}
                   </ul>
                 </div>
@@ -374,9 +394,7 @@ const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onImport }) 
             <div className="space-y-4">
               <div className="text-center py-4">
                 <div className="text-5xl mb-3">❌</div>
-                <p className="text-xl font-bold text-red-700">
-                  Erreur lors de l'importation
-                </p>
+                <p className="text-xl font-bold text-red-700">{t('importModal.error')}</p>
               </div>
 
               <div className="bg-red-50 border border-red-200 rounded-lg p-4">
@@ -398,7 +416,7 @@ const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onImport }) 
                 onClick={handleClose}
                 className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium transition-colors"
               >
-                Annuler
+                {t('importModal.cancel')}
               </button>
               <button
                 onClick={handleImport}
@@ -406,17 +424,14 @@ const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onImport }) 
                 className="flex items-center gap-2 px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg shadow transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <span>📥</span>
-                Importer
+                {t('importModal.importBtn')}
               </button>
             </>
           )}
 
           {importState === 'importing' && (
-            <button
-              disabled
-              className="px-4 py-2 text-gray-400 font-medium cursor-not-allowed"
-            >
-              Importation en cours...
+            <button disabled className="px-4 py-2 text-gray-400 font-medium cursor-not-allowed">
+              {t('importModal.importing')}
             </button>
           )}
 
@@ -425,7 +440,7 @@ const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onImport }) 
               onClick={handleClose}
               className="px-5 py-2 bg-gray-600 hover:bg-gray-700 text-white font-bold rounded-lg shadow transition-colors"
             >
-              Fermer
+              {t('importModal.close')}
             </button>
           )}
         </div>

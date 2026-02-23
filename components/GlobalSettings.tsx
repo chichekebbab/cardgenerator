@@ -1,7 +1,8 @@
-import React, { useRef } from 'react';
+import React, { useRef, useMemo } from 'react';
 import { GlobalSettings, AVAILABLE_FONTS, INITIAL_CARD_DATA, CardData, CardType } from '../types';
 import { useNotification } from './NotificationContext';
 import CardPreview from './CardPreview';
+import { useTranslation } from '../i18n/LanguageContext';
 
 interface GlobalSettingsProps {
   settings: GlobalSettings;
@@ -9,50 +10,53 @@ interface GlobalSettingsProps {
   onResetToDefaults: () => void;
 }
 
-const DEMO_CARD: CardData = {
-  id: 'demo-card',
-  title: 'Drégon de Démo',
-  type: CardType.MONSTER,
-  layout: 'standard',
-  level: 15,
-  bonus: '+10',
-  description:
-    "Ce monstre illustre vos nouveaux choix de polices. Il s'adapte en temps réel à vos réglages de langue et de style.",
-  badStuff: 'Vous perdez votre dignité et 2 niveaux.',
-  gold: '3',
-  imagePrePrompt: INITIAL_CARD_DATA.imagePrePrompt,
-  imagePrompt: 'Un dragon rigolo fait de pixels',
-  imageData: null,
-  itemSlot: '',
-  isBig: false,
-  restrictions: '',
-  levelsGained: 2,
-  imageScale: 100,
-  imageOffsetX: 0,
-  imageOffsetY: 0,
-  isBaseCard: false,
-  isValidated: false,
-  internalComment: '',
-};
-
 const GlobalSettingsComponent: React.FC<GlobalSettingsProps> = ({
   settings,
   onChange,
   onResetToDefaults,
 }) => {
   const { showNotification } = useNotification();
+  const { t } = useTranslation();
   const donjonInputRef = useRef<HTMLInputElement>(null);
   const tresorInputRef = useRef<HTMLInputElement>(null);
+
+  const DEMO_CARD: CardData = useMemo(
+    () => ({
+      id: 'demo-card',
+      title: t('globalSettings.demoTitle'),
+      type: CardType.MONSTER,
+      layout: 'standard',
+      level: 15,
+      bonus: '+10',
+      description: t('globalSettings.demoDesc'),
+      badStuff: t('globalSettings.demoBadStuff'),
+      gold: '3',
+      imagePrePrompt: INITIAL_CARD_DATA.imagePrePrompt,
+      imagePrompt: t('globalSettings.demoArtPrompt'),
+      imageData: null,
+      itemSlot: '',
+      isBig: false,
+      restrictions: '',
+      levelsGained: 2,
+      imageScale: 100,
+      imageOffsetX: 0,
+      imageOffsetY: 0,
+      isBaseCard: false,
+      isValidated: false,
+      internalComment: '',
+    }),
+    [t],
+  );
 
   const handleImageUpload = (type: 'Donjon' | 'Tresor', file: File) => {
     // Basic validation
     if (!file.type.startsWith('image/')) {
-      showNotification('Format de fichier invalide. Veuillez uploader une image.', 'error');
+      showNotification(t('globalSettings.invalidFormat'), 'error');
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      showNotification("L'image est trop lourde (max 5 Mo).", 'error');
+      showNotification(t('globalSettings.imageTooHeavy'), 'error');
       return;
     }
 
@@ -65,17 +69,11 @@ const GlobalSettingsComponent: React.FC<GlobalSettingsProps> = ({
         const tolerance = 0.05; // 5% tolerance
 
         if (Math.abs(ratio - targetRatio) > tolerance) {
-          showNotification(
-            `Ratio invalide (${img.width}x${img.height}). Le ratio attendu est de 56:88 (format carte standard).`,
-            'warning',
-          );
+          showNotification(t('globalSettings.invalidRatio'), 'warning');
         }
 
         if (img.width < 560 || img.height < 880) {
-          showNotification(
-            'Résolution un peu basse pour une impression de qualité (min 560x880 conseillé).',
-            'info',
-          );
+          showNotification(t('globalSettings.lowResolution'), 'info');
         }
 
         const dataUrl = e.target?.result as string;
@@ -84,7 +82,45 @@ const GlobalSettingsComponent: React.FC<GlobalSettingsProps> = ({
         } else {
           onChange({ ...settings, customBackTresor: dataUrl });
         }
-        showNotification(`Dos de carte ${type} mis à jour !`, 'success');
+        const translatedType =
+          type === 'Donjon' ? t('globalSettings.dungeon') : t('globalSettings.treasures');
+        showNotification(t('globalSettings.backUpdated', { type: translatedType }), 'success');
+      };
+      img.src = e.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleLayoutUpload = (key: keyof GlobalSettings, file: File, label: string) => {
+    if (!file.type.startsWith('image/')) {
+      showNotification(t('globalSettings.invalidFormat'), 'error');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      showNotification(t('globalSettings.imageTooHeavy'), 'error');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const ratio = img.width / img.height;
+        const targetRatio = 56 / 88;
+        const tolerance = 0.05;
+
+        if (Math.abs(ratio - targetRatio) > tolerance) {
+          showNotification(t('globalSettings.invalidRatio'), 'warning');
+        }
+
+        if (img.width < 560 || img.height < 880) {
+          showNotification(t('globalSettings.lowResolution'), 'info');
+        }
+
+        const dataUrl = e.target?.result as string;
+        onChange({ ...settings, [key]: dataUrl });
+        showNotification(t('globalSettings.layoutUpdated', { label }), 'success');
       };
       img.src = e.target?.result as string;
     };
@@ -104,22 +140,20 @@ const GlobalSettingsComponent: React.FC<GlobalSettingsProps> = ({
       <div className="flex flex-col md:flex-row md:items-end justify-between border-b-2 border-amber-900/20 pb-4 gap-4 mb-8">
         <div>
           <h2 className="text-3xl font-bold text-amber-900 flex items-center gap-2">
-            <span>⚙️</span> Paramètres Globaux
+            <span>⚙️</span> {t('globalSettings.title')}
           </h2>
-          <p className="text-amber-800/60 mt-1">
-            Configurez l'apparence et le comportement de votre jeu.
-          </p>
+          <p className="text-amber-800/60 mt-1">{t('globalSettings.subtitle')}</p>
         </div>
         <button
           onClick={() => {
-            if (confirm('Réinitialiser tous les paramètres aux valeurs par défaut ?')) {
+            if (confirm(t('globalSettings.confirmReset'))) {
               onResetToDefaults();
-              showNotification('Paramètres réinitialisés', 'info');
+              showNotification(t('globalSettings.resetSuccess'), 'info');
             }
           }}
           className="text-sm font-bold text-red-700 bg-red-50 hover:bg-red-100 px-4 py-2 rounded-lg border border-red-200 transition-colors"
         >
-          Tout Réinitialiser
+          {t('globalSettings.resetAll')}
         </button>
       </div>
 
@@ -131,15 +165,15 @@ const GlobalSettingsComponent: React.FC<GlobalSettingsProps> = ({
             <div className="bg-stone-50 px-6 py-4 border-b border-stone-200 flex items-center gap-3">
               <span className="text-2xl">🎴</span>
               <div>
-                <h3 className="font-bold text-stone-800">Dos de cartes personnalisés</h3>
-                <p className="text-xs text-stone-500">Affecte l'export PDF.</p>
+                <h3 className="font-bold text-stone-800">{t('globalSettings.customBacks')}</h3>
+                <p className="text-xs text-stone-500">{t('globalSettings.pdfExportHint')}</p>
               </div>
             </div>
             <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
               {/* Donjon */}
               <div className="space-y-4 text-center">
                 <h4 className="font-bold text-sm text-amber-900 uppercase tracking-wider">
-                  Donjon
+                  {t('globalSettings.dungeon')}
                 </h4>
                 <div className="aspect-[56/88] w-40 mx-auto bg-stone-100 rounded-lg overflow-hidden shadow-inner border border-stone-200 relative group">
                   <img
@@ -178,7 +212,7 @@ const GlobalSettingsComponent: React.FC<GlobalSettingsProps> = ({
               {/* Tresor */}
               <div className="space-y-4 text-center">
                 <h4 className="font-bold text-sm text-yellow-700 uppercase tracking-wider">
-                  Trésors
+                  {t('globalSettings.treasures')}
                 </h4>
                 <div className="aspect-[56/88] w-40 mx-auto bg-stone-100 rounded-lg overflow-hidden shadow-inner border border-stone-200 relative group">
                   <img
@@ -216,19 +250,128 @@ const GlobalSettingsComponent: React.FC<GlobalSettingsProps> = ({
             </div>
           </section>
 
+          {/* 1.5 Custom Layouts (Faces avant) */}
+          <section className="bg-white rounded-xl shadow-sm border border-stone-200 overflow-hidden">
+            <div className="bg-stone-50 px-6 py-4 border-b border-stone-200 flex items-center gap-3">
+              <span className="text-2xl">🃏</span>
+              <div>
+                <h3 className="font-bold text-stone-800">{t('globalSettings.customLayouts')}</h3>
+                <p className="text-xs text-stone-500">{t('globalSettings.customLayoutsDesc')}</p>
+              </div>
+            </div>
+            <div className="p-6 grid grid-cols-2 lg:grid-cols-4 gap-6">
+              {[
+                {
+                  key: 'customLayoutMonstre',
+                  filename: 'layout_monstre.png',
+                  label: t('globalSettings.monster'),
+                  color: 'text-red-800',
+                },
+                {
+                  key: 'customLayoutClass',
+                  filename: 'layout_class.png',
+                  label: t('globalSettings.class'),
+                  color: 'text-blue-800',
+                },
+                {
+                  key: 'customLayoutRace',
+                  filename: 'layout_race.png',
+                  label: t('globalSettings.race'),
+                  color: 'text-emerald-800',
+                },
+                {
+                  key: 'customLayoutMalediction',
+                  filename: 'layout_malediction.png',
+                  label: t('globalSettings.curse'),
+                  color: 'text-purple-800',
+                },
+                {
+                  key: 'customLayoutEquipement',
+                  filename: 'layout_equipement.png',
+                  label: t('globalSettings.equipment'),
+                  color: 'text-stone-800',
+                },
+                {
+                  key: 'customLayoutItem',
+                  filename: 'layout_item.png',
+                  label: t('globalSettings.item'),
+                  color: 'text-amber-800',
+                },
+                {
+                  key: 'customLayoutLvlup',
+                  filename: 'layout_lvlup.png',
+                  label: t('globalSettings.levelUp'),
+                  color: 'text-yellow-800',
+                },
+              ].map((layout) => (
+                <div key={layout.key} className="space-y-4 text-center">
+                  <h4
+                    className={`font-bold text-xs uppercase tracking-wider ${layout.color} h-8 flex items-center justify-center text-center`}
+                  >
+                    {layout.label}
+                  </h4>
+                  <div className="aspect-[56/88] w-28 mx-auto bg-stone-100 rounded-lg overflow-hidden shadow-inner border border-stone-200 relative group">
+                    <img
+                      src={
+                        (settings[layout.key as keyof GlobalSettings] as string) ||
+                        `/layouts/${layout.filename}`
+                      }
+                      alt={layout.label}
+                      className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                      <label className="bg-white px-2 py-1 rounded-full cursor-pointer hover:bg-stone-200 transition-colors flex items-center justify-center">
+                        <span className="text-sm">✏️</span>
+                        <input
+                          type="file"
+                          className="hidden"
+                          accept="image/*"
+                          onChange={(e) =>
+                            e.target.files?.[0] &&
+                            handleLayoutUpload(
+                              layout.key as keyof GlobalSettings,
+                              e.target.files[0],
+                              layout.label,
+                            )
+                          }
+                        />
+                      </label>
+                      {settings[layout.key as keyof GlobalSettings] && (
+                        <button
+                          onClick={() => {
+                            onChange({ ...settings, [layout.key]: null });
+                            showNotification(
+                              t('globalSettings.layoutReset', { label: layout.label }),
+                              'info',
+                            );
+                          }}
+                          className="bg-red-500 text-white px-2 py-1 flex items-center justify-center rounded-full hover:bg-red-600 transition-colors text-sm"
+                        >
+                          🗑️
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
           {/* 2. Fonts */}
           <section className="bg-white rounded-xl shadow-sm border border-stone-200 overflow-hidden">
             <div className="bg-stone-50 px-6 py-4 border-b border-stone-200 flex items-center gap-3">
               <span className="text-2xl">🔤</span>
               <div>
-                <h3 className="font-bold text-stone-800">Polices par type de texte</h3>
-                <p className="text-xs text-stone-500">Personnalisez le style visuel.</p>
+                <h3 className="font-bold text-stone-800">{t('globalSettings.fonts')}</h3>
+                <p className="text-xs text-stone-500">{t('globalSettings.fontsDesc')}</p>
               </div>
             </div>
             <div className="p-6 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-stone-600 uppercase">Titres</label>
+                  <label className="text-xs font-bold text-stone-600 uppercase">
+                    {t('globalSettings.titles')}
+                  </label>
                   <select
                     value={settings.fontTitle}
                     onChange={(e) => onChange({ ...settings, fontTitle: e.target.value })}
@@ -242,7 +385,9 @@ const GlobalSettingsComponent: React.FC<GlobalSettingsProps> = ({
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-stone-600 uppercase">Description</label>
+                  <label className="text-xs font-bold text-stone-600 uppercase">
+                    {t('globalSettings.description')}
+                  </label>
                   <select
                     value={settings.fontDescription}
                     onChange={(e) => onChange({ ...settings, fontDescription: e.target.value })}
@@ -258,7 +403,7 @@ const GlobalSettingsComponent: React.FC<GlobalSettingsProps> = ({
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-stone-600 uppercase">
-                  Meta (Niveaux, Gold...)
+                  {t('globalSettings.meta')}
                 </label>
                 <select
                   value={settings.fontMeta}
@@ -280,10 +425,8 @@ const GlobalSettingsComponent: React.FC<GlobalSettingsProps> = ({
             <div className="bg-stone-50 px-6 py-4 border-b border-stone-200 flex items-center gap-3">
               <span className="text-2xl">🌍</span>
               <div>
-                <h3 className="font-bold text-stone-800">Langue du jeu</h3>
-                <p className="text-xs text-stone-500">
-                  Labels automatiques (Niveaux, Trésors, etc.).
-                </p>
+                <h3 className="font-bold text-stone-800">{t('globalSettings.language')}</h3>
+                <p className="text-xs text-stone-500">{t('globalSettings.languageDesc')}</p>
               </div>
             </div>
             <div className="p-6">
@@ -292,13 +435,15 @@ const GlobalSettingsComponent: React.FC<GlobalSettingsProps> = ({
                   onClick={() => onChange({ ...settings, language: 'fr' })}
                   className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border-2 transition-all ${settings.language === 'fr' ? 'border-amber-600 bg-amber-50 text-amber-900' : 'border-stone-100 text-stone-400'}`}
                 >
-                  <span className="text-lg">🇫🇷</span> <span className="font-bold">Français</span>
+                  <span className="text-lg">🇫🇷</span>{' '}
+                  <span className="font-bold">{t('globalSettings.french')}</span>
                 </button>
                 <button
                   onClick={() => onChange({ ...settings, language: 'en' })}
                   className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border-2 transition-all ${settings.language === 'en' ? 'border-amber-600 bg-amber-50 text-amber-900' : 'border-stone-100 text-stone-400'}`}
                 >
-                  <span className="text-lg">🇬🇧</span> <span className="font-bold">English</span>
+                  <span className="text-lg">🇬🇧</span>{' '}
+                  <span className="font-bold">{t('globalSettings.english')}</span>
                 </button>
               </div>
             </div>
@@ -309,8 +454,8 @@ const GlobalSettingsComponent: React.FC<GlobalSettingsProps> = ({
             <div className="bg-stone-50 px-6 py-4 border-b border-stone-200 flex items-center gap-3">
               <span className="text-2xl">✏️</span>
               <div>
-                <h3 className="font-bold text-stone-800">Pré-prompt par défaut</h3>
-                <p className="text-xs text-stone-500">Instructions globales pour l'IA.</p>
+                <h3 className="font-bold text-stone-800">{t('globalSettings.defaultPrompt')}</h3>
+                <p className="text-xs text-stone-500">{t('globalSettings.defaultPromptDesc')}</p>
               </div>
             </div>
             <div className="p-6 space-y-4">
@@ -318,7 +463,7 @@ const GlobalSettingsComponent: React.FC<GlobalSettingsProps> = ({
                 value={settings.defaultImagePrePrompt}
                 onChange={(e) => onChange({ ...settings, defaultImagePrePrompt: e.target.value })}
                 className="w-full h-24 p-3 text-sm rounded-lg border border-stone-200 outline-none resize-none"
-                placeholder="Instructions pour l'IA..."
+                placeholder={t('globalSettings.promptPlaceholder')}
               />
               <button
                 onClick={() => {
@@ -326,11 +471,11 @@ const GlobalSettingsComponent: React.FC<GlobalSettingsProps> = ({
                     ...settings,
                     defaultImagePrePrompt: INITIAL_CARD_DATA.imagePrePrompt,
                   });
-                  showNotification('Prompt réinitialisé', 'info');
+                  showNotification(t('globalSettings.promptReset'), 'info');
                 }}
                 className="text-xs text-stone-500 underline flex ml-auto"
               >
-                Réinitialiser
+                {t('globalSettings.reset')}
               </button>
             </div>
           </section>
@@ -341,13 +486,13 @@ const GlobalSettingsComponent: React.FC<GlobalSettingsProps> = ({
           <div className="lg:sticky lg:top-8 space-y-4">
             <div className="bg-amber-900/5 rounded-2xl p-6 border-2 border-dashed border-amber-900/20">
               <h3 className="text-center font-bold text-amber-900 mb-4 uppercase text-sm tracking-widest">
-                Aperçu en Direct
+                {t('globalSettings.livePreview')}
               </h3>
               <div className="scale-75 md:scale-90 origin-top flex justify-center">
                 <CardPreview data={DEMO_CARD} globalSettings={settings} index={0} />
               </div>
               <p className="text-center text-[10px] text-amber-800/40 mt-4 italic font-medium px-4">
-                * L'aperçu reflète instantanément vos choix de polices et de langue ci-contre.
+                {t('globalSettings.previewHint')}
               </p>
             </div>
           </div>
@@ -355,7 +500,7 @@ const GlobalSettingsComponent: React.FC<GlobalSettingsProps> = ({
       </div>
 
       <div className="py-12 italic text-xs text-stone-400 text-center">
-        Les paramètres sont automatiquement sauvegardés localement.
+        {t('globalSettings.autoSave')}
       </div>
     </div>
   );

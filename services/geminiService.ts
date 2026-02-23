@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI } from '@google/genai';
 import { CardData, CardType } from '../types';
 
 // Cache pour l'instance par défaut (celle avec la clé d'environnement)
@@ -14,7 +14,9 @@ const getAiInstance = (userApiKey?: string) => {
   if (!defaultAiInstance) {
     const envApiKey = import.meta.env.VITE_GEMINI_API_KEY;
     if (!envApiKey) {
-      console.warn("Aucune clé API Gemini trouvée dans l'environnement ni fournie par l'utilisateur.");
+      console.warn(
+        "Aucune clé API Gemini trouvée dans l'environnement ni fournie par l'utilisateur.",
+      );
     }
     defaultAiInstance = new GoogleGenAI({ apiKey: envApiKey });
   }
@@ -43,7 +45,7 @@ export const generateCardArt = async (prompt: string, apiKey?: string): Promise<
       },
       config: {
         imageConfig: {
-          aspectRatio: "1:1",
+          aspectRatio: '1:1',
         },
       },
     });
@@ -75,11 +77,13 @@ export const generateCardArt = async (prompt: string, apiKey?: string): Promise<
 
     // Si on arrive ici, c'est peut-être un blocage de sécurité sans contenu
     if (candidate.finishReason && candidate.finishReason !== 'STOP') {
-      throw new Error(`Génération bloquée par le filtre de sécurité. Raison: ${candidate.finishReason}`);
+      throw new Error(
+        `Génération bloquée par le filtre de sécurité. Raison: ${candidate.finishReason}`,
+      );
     }
 
     throw new Error("Aucune donnée d'image trouvée dans la réponse (Raison inconnue).");
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erreur lors de la génération de l'image :", error);
     // On propage l'erreur pour l'afficher dans l'UI
     throw error;
@@ -92,7 +96,10 @@ export const generateCardArt = async (prompt: string, apiKey?: string): Promise<
  * @param apiKey Optional user-provided API key.
  * @returns Partial CardData object.
  */
-export const generateCardSuggestion = async (concept: string, apiKey?: string): Promise<Partial<CardData>> => {
+export const generateCardSuggestion = async (
+  concept: string,
+  apiKey?: string,
+): Promise<Partial<CardData>> => {
   try {
     const ai = getAiInstance(apiKey);
     const isRandom = !concept || concept.trim() === '';
@@ -105,7 +112,9 @@ export const generateCardSuggestion = async (concept: string, apiKey?: string): 
 
       Règles:
       1. L'humour doit être satirique, absurde et "munchkinesque" (parodie de JDR/Fantasy).
-      2. Le type de carte DOIT être l'une des valeurs exactes suivantes: ${Object.values(CardType).map(v => `"${v}"`).join(', ')}.
+      2. Le type de carte DOIT être l'une des valeurs exactes suivantes: ${Object.values(CardType)
+        .map((v) => `"${v}"`)
+        .join(', ')}.
       3. Génère uniquement un SEUL objet JSON (pas un tableau).
       4. Structure JSON attendue:
       {
@@ -148,7 +157,7 @@ export const generateCardSuggestion = async (concept: string, apiKey?: string): 
       },
       config: {
         responseMimeType: 'application/json',
-      }
+      },
     });
 
     if (!response.candidates || response.candidates.length === 0) {
@@ -156,7 +165,7 @@ export const generateCardSuggestion = async (concept: string, apiKey?: string): 
     }
 
     const candidate = response.candidates[0];
-    console.log("[GEMINI SERVICE] Full candidate response:", JSON.stringify(candidate, null, 2));
+    console.log('[GEMINI SERVICE] Full candidate response:', JSON.stringify(candidate, null, 2));
     let textResult = '';
 
     if (candidate.content && candidate.content.parts) {
@@ -181,9 +190,8 @@ export const generateCardSuggestion = async (concept: string, apiKey?: string): 
     }
 
     return data;
-
-  } catch (error: any) {
-    console.error("Erreur génération suggestion:", error);
+  } catch (error: unknown) {
+    console.error('Erreur génération suggestion:', error);
     throw error;
   }
 };

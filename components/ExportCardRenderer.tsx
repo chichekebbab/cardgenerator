@@ -88,7 +88,7 @@ const ExportCardRenderer = forwardRef<HTMLDivElement, ExportCardRendererProps>(
       if (idMatch) {
         const id = idMatch[1] || idMatch[2];
         imageSrc = `https://lh3.googleusercontent.com/d/${id}`;
-      } else if (url.startsWith('http') || url.startsWith('data:')) {
+      } else if (url.startsWith('http') || url.startsWith('data:') || url.startsWith('/')) {
         imageSrc = url;
       }
     }
@@ -141,7 +141,6 @@ const ExportCardRenderer = forwardRef<HTMLDivElement, ExportCardRendererProps>(
             (() => {
               const valueStr = String(diamond.value);
               const isRange = valueStr.includes('/');
-              const fontWeight = isRange ? 'font-normal' : 'font-bold';
               const fontSize = isRange ? '2.4rem' : '2.8rem';
               const leftOffset = isRange ? 6 : 0;
               const topOffset = isRange ? 4 : 0;

@@ -1,9 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { CardData, CardType, CardLayout, GlobalSettings } from '../types';
 import { generateCardArt, generateCardSuggestion } from '../services/geminiService';
-import { removeBackground, removeBackgroundFromUrl, hasDefaultRemoveBgKey } from '../services/removeBgService';
+import {
+  removeBackground,
+  removeBackgroundFromUrl,
+  hasDefaultRemoveBgKey,
+} from '../services/removeBgService';
 import { useNotification } from './NotificationContext';
-import { getRecommendedValues, formatTreasures, validateMonsterBalance } from '../utils/balancingConfig';
+import {
+  getRecommendedValues,
+  formatTreasures,
+  validateMonsterBalance,
+} from '../utils/balancingConfig';
+import { useTranslation } from '../i18n/LanguageContext';
 
 interface CardFormProps {
   cardData: CardData;
@@ -22,16 +31,54 @@ interface CardFormProps {
   globalSettings: GlobalSettings;
 }
 
-// Pré-prompt technique imposé (ne change jamais)
-const FIXED_PRE_PROMPT = "Génère une illustration au format carré (1x1). Le style artistique doit imiter parfaitement celui du jeu de cartes 'Munchkin' et du dessinateur John Kovalic : un style cartoon satirique, dessiné à la main, avec des contours noirs épais et une ambiance humoristique de fantasy. L'image doit présenter un seul élément isolé, centré. Il ne doit y avoir absolument aucun texte sur l'image. Le fond doit être une couleur unie, neutre et simple, sans aucun décor ni détail. Voici l'élément à générer :";
+// Pre-prompt kept for reference but configured via globalSettings
+// const FIXED_PRE_PROMPT = ...;
 
-const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, onDuplicate, onDelete, isSaving, hasScriptUrl, hasUnsavedChanges, onImport, removeBgApiKey, geminiApiKey, globalSettings }) => {
+const CardForm: React.FC<CardFormProps> = ({
+  cardData,
+  onChange,
+  onSave,
+  onNew,
+  onDuplicate,
+  onDelete,
+  isSaving,
+  hasScriptUrl,
+  hasUnsavedChanges,
+  onImport,
+  removeBgApiKey,
+  geminiApiKey,
+  globalSettings,
+}) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSuggesting, setIsSuggesting] = useState(false); // New: suggestion state
-  const [suggestionInput, setSuggestionInput] = useState(""); // New: suggestion input
+  const [suggestionInput, setSuggestionInput] = useState(''); // New: suggestion input
   const [isRemovingBg, setIsRemovingBg] = useState(false); // New: background removal state
   const [error, setError] = useState<string | null>(null);
   const { showNotification } = useNotification();
+  const { t, language } = useTranslation();
+
+  const getCardTypeLabel = (type: CardType) => {
+    const key = Object.keys(CardType).find((k) => CardType[k as keyof typeof CardType] === type);
+    if (!key) return type;
+    const translationKey = key.toLowerCase().replace(/_([a-z])/g, (g) => g[1].toUpperCase());
+    return t(`cardTypes.${translationKey}` as string);
+  };
+
+  const translateItemSlot = (slot: string) => {
+    if (!slot) return t('cardGallery.slotOneShot');
+    const map: Record<string, string> = {
+      '1 Main': language === 'en' ? '1 Hand' : '1 Main',
+      '2 Mains': language === 'en' ? '2 Hands' : '2 Mains',
+      'Couvre-chef': language === 'en' ? 'Headgear' : 'Couvre-chef',
+      Chaussures: language === 'en' ? 'Footgear' : 'Chaussures',
+      Armure: language === 'en' ? 'Armor' : 'Armure',
+      Monture: language === 'en' ? 'Steed' : 'Monture',
+      Amélioration: t('cardGallery.slotEnhancement'),
+      'Amélioration de Monture': t('cardGallery.slotSteedEnhancement'),
+      NoSlot: t('cardGallery.slotNoSlot'),
+    };
+    return map[slot] || slot;
+  };
 
   const handleChange = (field: keyof CardData, value: string | number | boolean | CardLayout) => {
     onChange({ ...cardData, [field]: value });
@@ -39,7 +86,7 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
 
   const handleGenerateImage = async () => {
     if (!cardData.imagePrompt) {
-      setError("Veuillez d'abord entrer une description.");
+      setError(t('cardForm.errorNoDescription'));
       return;
     }
 
@@ -54,10 +101,10 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
         ...cardData,
         imageData: base64Image,
         storedImageUrl: undefined,
-        imagePrePrompt: prePrompt
+        imagePrePrompt: prePrompt,
       });
     } catch (err) {
-      setError("Échec de la génération de l'image. Veuillez réessayer.");
+      setError(t('cardForm.errorGenImage'));
       console.error(err);
     } finally {
       setIsGenerating(false);
@@ -66,13 +113,13 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
 
   const handleRemoveBackground = async () => {
     if (!removeBgApiKey && !hasDefaultRemoveBgKey) {
-      setError("Clé API remove.bg non configurée. Ajoutez-la dans les paramètres (⚙️).");
+      setError(t('cardForm.removeBgConfigError'));
       return;
     }
 
     // Check if there's an image to process
     if (!cardData.imageData && !cardData.storedImageUrl) {
-      setError("Aucune image à traiter. Générez d'abord une image.");
+      setError(t('cardForm.removeBgNoImage'));
       return;
     }
 
@@ -80,49 +127,58 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
     setError(null);
 
     try {
-      console.log("[BG REMOVAL] Starting background removal...");
-      console.log("[BG REMOVAL] Current state:", { hasImageData: !!cardData.imageData, hasStoredUrl: !!cardData.storedImageUrl });
+      console.log('[BG REMOVAL] Starting background removal...');
+      console.log('[BG REMOVAL] Current state:', {
+        hasImageData: !!cardData.imageData,
+        hasStoredUrl: !!cardData.storedImageUrl,
+      });
 
       let processedImage: string;
 
       // Use URL-based API when storedImageUrl exists (avoids CORS issues with Google Drive)
       if (cardData.storedImageUrl && !cardData.imageData) {
-        console.log("[BG REMOVAL] Using URL-based API with:", cardData.storedImageUrl);
+        console.log('[BG REMOVAL] Using URL-based API with:', cardData.storedImageUrl);
         processedImage = await removeBackgroundFromUrl(cardData.storedImageUrl, removeBgApiKey);
       } else if (cardData.imageData) {
-        console.log("[BG REMOVAL] Using base64 API");
+        console.log('[BG REMOVAL] Using base64 API');
         // Use base64-based API for locally generated images
         processedImage = await removeBackground(cardData.imageData, removeBgApiKey);
       } else {
-        throw new Error("Impossible de charger l'image.");
+        throw new Error(t('cardPreview.invalidData'));
       }
 
-      console.log("[BG REMOVAL] Background removed successfully, updating state...");
-      console.log("[BG REMOVAL] Processed image length:", processedImage.length);
+      console.log('[BG REMOVAL] Background removed successfully, updating state...');
+      console.log('[BG REMOVAL] Processed image length:', processedImage.length);
 
       // Create a new card object with the processed image
       const updatedCard = {
         ...cardData,
         imageData: processedImage,
-        storedImageUrl: undefined // Clear stored URL to indicate unsaved changes
+        storedImageUrl: undefined, // Clear stored URL to indicate unsaved changes
       };
 
-      console.log("[BG REMOVAL] Updated card:", { hasImageData: !!updatedCard.imageData, hasStoredUrl: !!updatedCard.storedImageUrl });
+      console.log('[BG REMOVAL] Updated card:', {
+        hasImageData: !!updatedCard.imageData,
+        hasStoredUrl: !!updatedCard.storedImageUrl,
+      });
 
       // Update the card data with the new image FIRST
       onChange(updatedCard);
 
       // Don't wait for React state updates - pass the updated card directly to save
-      console.log("[BG REMOVAL] Calling save with updated card data...");
+      console.log('[BG REMOVAL] Calling save with updated card data...');
 
       // Pass the updated card directly to avoid async state update issues
       await onSave(updatedCard);
 
-      console.log("[BG REMOVAL] Save completed successfully");
-      showNotification("Arrière-plan supprimé et carte sauvegardée avec succès !", 'success');
-    } catch (err: any) {
-      console.error("[BG REMOVAL] Error:", err);
-      setError(err.message || "Erreur lors de la suppression de l'arrière-plan.");
+      console.log('[BG REMOVAL] Save completed successfully');
+      showNotification(t('cardForm.removeBgSuccess'), 'success');
+    } catch (err: unknown) {
+      console.error('[BG REMOVAL] Error:', err);
+      setError(
+        (err instanceof Error ? err.message : String(err)) ||
+          "Erreur lors de la suppression de l'arrière-plan.",
+      );
     } finally {
       setIsRemovingBg(false);
     }
@@ -134,7 +190,7 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
 
     // Check file size (optional but recommended, e.g., 5MB limit)
     if (file.size > 5 * 1024 * 1024) {
-      setError("L'image est trop lourde (max 5Mo).");
+      setError(t('cardForm.errorImageWeight'));
       return;
     }
 
@@ -147,11 +203,11 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
         ...cardData,
         imageData: base64,
         storedImageUrl: undefined,
-        imagePrompt: `Image importée: ${file.name}`
+        imagePrompt: `Image importée: ${file.name}`,
       });
     };
     reader.onerror = () => {
-      setError("Erreur lors de la lecture du fichier.");
+      setError(t('cardForm.errorReadFile'));
     };
     reader.readAsDataURL(file);
   };
@@ -160,15 +216,15 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
     setIsSuggesting(true);
     setError(null);
     try {
-      console.log("[CARD FORM] Requesting suggestion for:", suggestionInput);
+      console.log('[CARD FORM] Requesting suggestion for:', suggestionInput);
       const suggestion = await generateCardSuggestion(suggestionInput, geminiApiKey);
-      console.log("[CARD FORM] Received suggestion:", suggestion);
+      console.log('[CARD FORM] Received suggestion:', suggestion);
 
       // On s'assure que la suggestion ne contient pas d'ID qui pourrait écraser l'actuel
       // ou entrer en conflit avec une autre carte.
       const cleanSuggestion = { ...suggestion };
-      delete (cleanSuggestion as any).id;
-      delete (cleanSuggestion as any).uuid;
+      delete (cleanSuggestion as Partial<CardData> & { id?: string }).id;
+      delete (cleanSuggestion as Partial<CardData> & { uuid?: string }).uuid;
 
       // On génère un nouvel ID pour que la proposition soit considérée comme une NOUVELLE carte
       // et n'écrase pas l'ancienne carte si on était en train d'en éditer une.
@@ -180,15 +236,22 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
         ...cleanSuggestion,
         id: newId,
         // Fallback pour les champs obligatoires ou numériques
-        level: cleanSuggestion.type === CardType.MONSTER ? (cleanSuggestion.level || 1) : '',
-        levelsGained: cleanSuggestion.type === CardType.MONSTER ? (cleanSuggestion.levelsGained || 1) : '',
-        badStuff: cleanSuggestion.type === CardType.MONSTER ? (cleanSuggestion.badStuff || '') : '',
-        bonus: (cleanSuggestion.type === CardType.ITEM || cleanSuggestion.type === CardType.LEVEL_UP || cleanSuggestion.type === CardType.FAITHFUL_SERVANT || cleanSuggestion.type === CardType.DUNGEON_TRAP || cleanSuggestion.type === CardType.DUNGEON_BONUS || cleanSuggestion.type === CardType.TREASURE_TRAP)
-          ? (cleanSuggestion.bonus || '')
-          : '',
+        level: cleanSuggestion.type === CardType.MONSTER ? cleanSuggestion.level || 1 : '',
+        levelsGained:
+          cleanSuggestion.type === CardType.MONSTER ? cleanSuggestion.levelsGained || 1 : '',
+        badStuff: cleanSuggestion.type === CardType.MONSTER ? cleanSuggestion.badStuff || '' : '',
+        bonus:
+          cleanSuggestion.type === CardType.ITEM ||
+          cleanSuggestion.type === CardType.LEVEL_UP ||
+          cleanSuggestion.type === CardType.FAITHFUL_SERVANT ||
+          cleanSuggestion.type === CardType.DUNGEON_TRAP ||
+          cleanSuggestion.type === CardType.DUNGEON_BONUS ||
+          cleanSuggestion.type === CardType.TREASURE_TRAP
+            ? cleanSuggestion.bonus || ''
+            : '',
         gold: cleanSuggestion.gold || '',
-        itemSlot: cleanSuggestion.type === CardType.ITEM ? (cleanSuggestion.itemSlot || '') : '',
-        isBig: cleanSuggestion.type === CardType.ITEM ? (!!cleanSuggestion.isBig) : false,
+        itemSlot: cleanSuggestion.type === CardType.ITEM ? cleanSuggestion.itemSlot || '' : '',
+        isBig: cleanSuggestion.type === CardType.ITEM ? !!cleanSuggestion.isBig : false,
         restrictions: cleanSuggestion.restrictions || '',
         imagePrompt: cleanSuggestion.imagePrompt || '',
         imageData: null, // Reset image for new suggestion
@@ -196,13 +259,16 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
         internalComment: '',
       };
 
-      console.log("[CARD FORM] Updating card with new ID:", updatedCard.id);
+      console.log('[CARD FORM] Updating card with new ID:', updatedCard.id);
       onChange(updatedCard);
 
-      showNotification("Proposition générée ! Ajustez si besoin.", 'success');
-    } catch (err: any) {
-      console.error("Erreur suggestion:", err);
-      setError("Erreur lors de la suggestion : " + (err.message || "Inconnue"));
+      showNotification(t('cardForm.assistantGenerated'), 'success');
+    } catch (err: unknown) {
+      console.error('Erreur suggestion:', err);
+      setError(
+        t('cardForm.assistantError') +
+          ((err instanceof Error ? err.message : String(err)) || 'Inconnue'),
+      );
     } finally {
       setIsSuggesting(false);
     }
@@ -210,7 +276,11 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
 
   // Auto-fill monster balancing fields when level changes
   useEffect(() => {
-    if (cardData.type === CardType.MONSTER && typeof cardData.level === 'number' && cardData.level > 0) {
+    if (
+      cardData.type === CardType.MONSTER &&
+      typeof cardData.level === 'number' &&
+      cardData.level > 0
+    ) {
       const recommended = getRecommendedValues(cardData.level);
 
       // Build a single update object to avoid stale closure issues
@@ -232,6 +302,7 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
         onChange({ ...cardData, ...updates });
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cardData.level, cardData.type]); // Only run when level or type changes
 
   return (
@@ -241,23 +312,23 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
           <button
             onClick={onNew}
             className="h-[34px] px-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded border border-gray-300 transition-colors flex items-center gap-1.5 whitespace-nowrap"
-            title="Nouvelle Carte"
+            title={t('cardForm.btnNewTitle')}
           >
-            <span>➕</span> Nouvelle
+            <span>➕</span> {t('cardForm.new')}
           </button>
           <button
             onClick={onDuplicate}
             className="h-[34px] px-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded border border-gray-300 transition-colors flex items-center gap-1.5 whitespace-nowrap"
-            title="Dupliquer la carte"
+            title={t('cardForm.btnDuplicateTitle')}
           >
-            <span>👥</span> Dupliquer
+            <span>👥</span> {t('cardForm.duplicate')}
           </button>
           <button
             onClick={onImport}
             className="h-[34px] px-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded border border-gray-300 transition-colors flex items-center gap-1.5 whitespace-nowrap"
-            title="Importer via JSON"
+            title={t('cardForm.btnImportTitle')}
           >
-            <span>📥</span> Import
+            <span>📥</span> {t('cardForm.import')}
           </button>
         </div>
 
@@ -267,18 +338,19 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
               onClick={onDelete}
               disabled={isSaving}
               className="h-[34px] w-[34px] text-red-600 bg-red-50 hover:bg-red-100 rounded border border-red-200 transition-colors disabled:opacity-50 flex items-center justify-center shrink-0"
-              title="Supprimer la carte"
+              title={t('cardForm.btnDeleteTitle')}
             >
               <span className="text-base leading-none">🗑️</span>
             </button>
             <button
               onClick={() => onSave()}
               disabled={isSaving || !hasUnsavedChanges}
-              className={`h-[34px] px-3 text-sm font-bold rounded shadow transition-all flex items-center gap-1.5 whitespace-nowrap ${hasUnsavedChanges
-                ? 'text-white bg-green-600 hover:bg-green-700 cursor-pointer'
-                : 'text-green-800 bg-green-100 cursor-not-allowed opacity-75'
-                } ${isSaving ? 'opacity-50' : ''}`}
-              title={hasUnsavedChanges ? 'Enregistrer les modifications' : 'Carte sauvegardée'}
+              className={`h-[34px] px-3 text-sm font-bold rounded shadow transition-all flex items-center gap-1.5 whitespace-nowrap ${
+                hasUnsavedChanges
+                  ? 'text-white bg-green-600 hover:bg-green-700 cursor-pointer'
+                  : 'text-green-800 bg-green-100 cursor-not-allowed opacity-75'
+              } ${isSaving ? 'opacity-50' : ''}`}
+              title={hasUnsavedChanges ? t('cardForm.btnSaveTitle') : t('cardForm.btnSavedTitle')}
             >
               {isSaving ? (
                 <>
@@ -287,11 +359,11 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
                 </>
               ) : hasUnsavedChanges ? (
                 <>
-                  <span>💾</span> Sauvegarder
+                  <span>💾</span> {t('cardForm.save')}
                 </>
               ) : (
                 <>
-                  <span>✓</span> Sauvegardée
+                  <span>✓</span> {t('cardForm.saved')}
                 </>
               )}
             </button>
@@ -301,26 +373,25 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
 
       {!hasScriptUrl && (
         <div className="mb-4 p-3 bg-blue-50 text-blue-800 text-xs rounded border border-blue-200">
-          ℹ️ Connectez une base de données Google Sheet (via l'icône ⚙️ en haut) pour sauvegarder vos cartes dans le cloud.
+          {t('cardForm.cloudInfo')}
         </div>
       )}
 
       <div className="space-y-4">
-
-
-
         {/* Assistant Creation (Gemini) */}
         <div className="bg-gradient-to-r from-amber-50 to-orange-50 p-4 rounded-lg border border-amber-200 shadow-sm">
           <label className="block text-sm font-bold text-amber-900 mb-2 flex items-center gap-2">
-            <span>✨ Assistant Création</span>
-            <span className="text-[10px] font-normal text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">Gemini 2.0 Flash</span>
+            <span>✨ {t('cardForm.assistantTitle')}</span>
+            <span className="text-[10px] font-normal text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
+              Gemini 2.0 Flash
+            </span>
           </label>
           <div className="flex gap-2">
             <input
               type="text"
               value={suggestionInput}
               onChange={(e) => setSuggestionInput(e.target.value)}
-              placeholder="Concept (ex: grille-pain maléfique)... laissez vide pour du hasard !"
+              placeholder={t('cardForm.assistantConcept')}
               className="flex-grow p-2 text-sm border border-amber-300 rounded focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-white"
               onKeyDown={(e) => e.key === 'Enter' && handleSuggestCard()}
             />
@@ -328,20 +399,20 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
               onClick={handleSuggestCard}
               disabled={isSuggesting}
               className="bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 px-4 rounded transition-colors disabled:opacity-50 whitespace-nowrap shadow-sm text-sm"
-              title={suggestionInput ? "Générer une carte basée sur ce concept" : "Générer une carte totalement aléatoire"}
+              title={suggestionInput ? t('cardForm.assistantBtn') : t('cardForm.assistantBtn')}
             >
-              {isSuggesting ? 'Réflexion...' : 'Suggérer'}
+              {isSuggesting ? t('cardForm.assistantThinking') : t('cardForm.assistantBtn')}
             </button>
           </div>
-          <p className="text-[10px] text-amber-700/70 mt-1 italic">
-            Remplit automatiquement les champs (titre, stats, description...) et propose un prompt pour l'image.
-          </p>
+          <p className="text-[10px] text-amber-700/70 mt-1 italic">{t('cardForm.assistantDesc')}</p>
         </div>
 
         {/* Basic Info */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Type de Carte</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {t('cardForm.cardType')}
+            </label>
             <select
               value={cardData.type}
               onChange={(e) => {
@@ -349,19 +420,35 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
                 onChange({
                   ...cardData,
                   type: newType,
-                  bonus: newType === CardType.LEVEL_UP ? 1 : (newType === CardType.DUNGEON_TRAP || newType === CardType.DUNGEON_BONUS || newType === CardType.TREASURE_TRAP) ? '' : cardData.bonus,
-                  gold: (newType === CardType.DUNGEON_TRAP || newType === CardType.DUNGEON_BONUS || newType === CardType.TREASURE_TRAP) ? '' : cardData.gold
+                  bonus:
+                    newType === CardType.LEVEL_UP
+                      ? 1
+                      : newType === CardType.DUNGEON_TRAP ||
+                          newType === CardType.DUNGEON_BONUS ||
+                          newType === CardType.TREASURE_TRAP
+                        ? ''
+                        : cardData.bonus,
+                  gold:
+                    newType === CardType.DUNGEON_TRAP ||
+                    newType === CardType.DUNGEON_BONUS ||
+                    newType === CardType.TREASURE_TRAP
+                      ? ''
+                      : cardData.gold,
                 });
               }}
               className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
             >
               {Object.values(CardType).map((type) => (
-                <option key={type} value={type}>{type}</option>
+                <option key={type} value={type}>
+                  {getCardTypeLabel(type)}
+                </option>
               ))}
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Titre</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {t('cardForm.title')}
+            </label>
             <input
               type="text"
               value={cardData.title || ''}
@@ -375,7 +462,9 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
         <div className="grid grid-cols-2 gap-4">
           {cardData.type === CardType.MONSTER && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Niveau</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {t('cardForm.level')}
+              </label>
               <input
                 type="number"
                 value={cardData.level || ''}
@@ -384,9 +473,16 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
               />
             </div>
           )}
-          {(cardData.type === CardType.ITEM || cardData.type === CardType.LEVEL_UP || cardData.type === CardType.FAITHFUL_SERVANT || cardData.type === CardType.DUNGEON_TRAP || cardData.type === CardType.DUNGEON_BONUS || cardData.type === CardType.TREASURE_TRAP) && (
+          {(cardData.type === CardType.ITEM ||
+            cardData.type === CardType.LEVEL_UP ||
+            cardData.type === CardType.FAITHFUL_SERVANT ||
+            cardData.type === CardType.DUNGEON_TRAP ||
+            cardData.type === CardType.DUNGEON_BONUS ||
+            cardData.type === CardType.TREASURE_TRAP) && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Bonus</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {t('cardForm.bonus')}
+              </label>
               <input
                 type="text"
                 value={cardData.bonus || ''}
@@ -398,39 +494,71 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
           {/* Val/Trésors - Only for Monster and Item types */}
           {(cardData.type === CardType.MONSTER || cardData.type === CardType.ITEM) && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Val/Trésors</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {t('cardForm.goldTreasures')}
+              </label>
               <div className="relative">
                 <input
                   type="text"
                   value={cardData.gold || ''}
                   onChange={(e) => handleChange('gold', e.target.value)}
-                  className={`w-full p-2 border rounded focus:ring-2 focus:ring-amber-500 focus:border-amber-500 ${cardData.type === CardType.MONSTER && typeof cardData.level === 'number' && cardData.level > 0
-                    ? (() => {
-                      const validation = validateMonsterBalance(cardData.level, cardData.gold || '', cardData.levelsGained);
-                      const hasGoldWarning = validation.warnings.some(w => w.includes('Trésors'));
-                      return hasGoldWarning ? 'border-yellow-400 bg-yellow-50' : 'border-gray-300';
-                    })()
-                    : 'border-gray-300'
-                    }`}
-                  placeholder={cardData.type === CardType.MONSTER ? "ex: 2" : "ex: 500"}
+                  className={`w-full p-2 border rounded focus:ring-2 focus:ring-amber-500 focus:border-amber-500 ${
+                    cardData.type === CardType.MONSTER &&
+                    typeof cardData.level === 'number' &&
+                    cardData.level > 0
+                      ? (() => {
+                          const validation = validateMonsterBalance(
+                            cardData.level,
+                            cardData.gold || '',
+                            cardData.levelsGained,
+                            t,
+                          );
+                          const hasGoldWarning = validation.warnings.some((w) =>
+                            w.includes(
+                              t('monsterBalance.recommendedTreasures', { count: '' }).split(':')[0],
+                            ),
+                          );
+                          return hasGoldWarning
+                            ? 'border-yellow-400 bg-yellow-50'
+                            : 'border-gray-300';
+                        })()
+                      : 'border-gray-300'
+                  }`}
+                  placeholder={
+                    cardData.type === CardType.MONSTER
+                      ? t('cardForm.goldPlaceholderMonster')
+                      : t('cardForm.goldPlaceholderItem')
+                  }
                 />
-                {cardData.type === CardType.MONSTER && typeof cardData.level === 'number' && cardData.level > 0 && (() => {
-                  const validation = validateMonsterBalance(cardData.level, cardData.gold || '', cardData.levelsGained);
-                  const goldWarning = validation.warnings.find(w => w.includes('Trésors'));
-                  return goldWarning ? (
-                    <div
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-yellow-600 cursor-help"
-                      title={goldWarning}
-                    >
-                      ⚠️
-                    </div>
-                  ) : null;
-                })()}
+                {cardData.type === CardType.MONSTER &&
+                  typeof cardData.level === 'number' &&
+                  cardData.level > 0 &&
+                  (() => {
+                    const validation = validateMonsterBalance(
+                      cardData.level,
+                      cardData.gold || '',
+                      cardData.levelsGained,
+                      t,
+                    );
+                    const goldWarning = validation.warnings.find((w) =>
+                      w.includes(
+                        t('monsterBalance.recommendedTreasures', { count: '' }).split(':')[0],
+                      ),
+                    );
+                    return goldWarning ? (
+                      <div
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-yellow-600 cursor-help"
+                        title={goldWarning}
+                      >
+                        ⚠️
+                      </div>
+                    ) : null;
+                  })()}
               </div>
               <p className="text-xs text-gray-500 mt-1 italic">
                 {cardData.type === CardType.MONSTER
-                  ? "Entrez uniquement la valeur numérique. Le texte « trésors » sera ajouté automatiquement."
-                  : "Entrez uniquement la valeur numérique. Le texte « pièces d'or » sera ajouté automatiquement."}
+                  ? t('cardForm.goldHintMonster')
+                  : t('cardForm.goldHintItem')}
               </p>
             </div>
           )}
@@ -439,38 +567,65 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
         {/* Monster Specifics */}
         {cardData.type === CardType.MONSTER && (
           <div className="bg-green-50 p-3 rounded border border-green-100 space-y-3">
-            <h3 className="text-sm font-bold text-green-800 uppercase tracking-wide">Propriétés du Monstre</h3>
+            <h3 className="text-sm font-bold text-green-800 uppercase tracking-wide">
+              {t('cardForm.monsterProps')}
+            </h3>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Niveaux Gagnés</label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  {t('cardForm.levelsGained')}
+                </label>
                 <div className="relative">
                   <input
                     type="number"
                     min="1"
                     value={cardData.levelsGained || ''}
                     onChange={(e) => handleChange('levelsGained', parseInt(e.target.value) || '')}
-                    className={`w-full p-2 border rounded text-sm focus:ring-1 focus:ring-green-500 ${typeof cardData.level === 'number' && cardData.level > 0
-                      ? (() => {
-                        const validation = validateMonsterBalance(cardData.level, cardData.gold || '', cardData.levelsGained);
-                        const hasLevelWarning = validation.warnings.some(w => w.includes('Niveaux'));
-                        return hasLevelWarning ? 'border-yellow-400 bg-yellow-50' : 'border-gray-300';
-                      })()
-                      : 'border-gray-300'
-                      }`}
+                    className={`w-full p-2 border rounded text-sm focus:ring-1 focus:ring-green-500 ${
+                      typeof cardData.level === 'number' && cardData.level > 0
+                        ? (() => {
+                            const validation = validateMonsterBalance(
+                              cardData.level,
+                              cardData.gold || '',
+                              cardData.levelsGained,
+                              t,
+                            );
+                            const hasLevelWarning = validation.warnings.some((w) =>
+                              w.includes(
+                                t('monsterBalance.recommendedLevels', { count: '' }).split(':')[0],
+                              ),
+                            );
+                            return hasLevelWarning
+                              ? 'border-yellow-400 bg-yellow-50'
+                              : 'border-gray-300';
+                          })()
+                        : 'border-gray-300'
+                    }`}
                     placeholder="1"
                   />
-                  {typeof cardData.level === 'number' && cardData.level > 0 && (() => {
-                    const validation = validateMonsterBalance(cardData.level, cardData.gold || '', cardData.levelsGained);
-                    const levelWarning = validation.warnings.find(w => w.includes('Niveaux'));
-                    return levelWarning ? (
-                      <div
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-yellow-600 cursor-help"
-                        title={levelWarning}
-                      >
-                        ⚠️
-                      </div>
-                    ) : null;
-                  })()}
+                  {typeof cardData.level === 'number' &&
+                    cardData.level > 0 &&
+                    (() => {
+                      const validation = validateMonsterBalance(
+                        cardData.level,
+                        cardData.gold || '',
+                        cardData.levelsGained,
+                        t,
+                      );
+                      const levelWarning = validation.warnings.find((w) =>
+                        w.includes(
+                          t('monsterBalance.recommendedLevels', { count: '' }).split(':')[0],
+                        ),
+                      );
+                      return levelWarning ? (
+                        <div
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-yellow-600 cursor-help"
+                          title={levelWarning}
+                        >
+                          ⚠️
+                        </div>
+                      ) : null;
+                    })()}
                 </div>
               </div>
             </div>
@@ -480,10 +635,14 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
         {/* Item Specifics */}
         {cardData.type === CardType.ITEM && (
           <div className="bg-amber-50 p-3 rounded border border-amber-100 space-y-3">
-            <h3 className="text-sm font-bold text-amber-800 uppercase tracking-wide">Propriétés de l'Objet</h3>
+            <h3 className="text-sm font-bold text-amber-800 uppercase tracking-wide">
+              {t('cardForm.itemProps')}
+            </h3>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Emplacement</label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  {t('cardForm.itemSlot')}
+                </label>
                 <select
                   value={cardData.itemSlot || ''}
                   onChange={(e) => {
@@ -491,25 +650,29 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
                     onChange({
                       ...cardData,
                       itemSlot: newSlot,
-                      isBig: newSlot === 'Amélioration de Monture' ? false : cardData.isBig
+                      isBig: newSlot === 'Amélioration de Monture' ? false : cardData.isBig,
                     });
                   }}
                   className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-amber-500"
                 >
-                  <option value="">Usage Unique</option>
-                  <option value="1 Main">1 Main</option>
-                  <option value="2 Mains">2 Mains</option>
-                  <option value="Couvre-chef">Couvre-chef</option>
-                  <option value="Chaussures">Chaussures</option>
-                  <option value="Armure">Armure</option>
-                  <option value="Monture">Monture</option>
-                  <option value="Amélioration de Monture">Amélioration de Monture</option>
-                  <option value="NoSlot">Sans emplacement</option>
-                  <option value="Amélioration">Amélioration</option>
+                  <option value="">{t('cardGallery.slotOneShot')}</option>
+                  <option value="1 Main">{translateItemSlot('1 Main')}</option>
+                  <option value="2 Mains">{translateItemSlot('2 Mains')}</option>
+                  <option value="Couvre-chef">{translateItemSlot('Couvre-chef')}</option>
+                  <option value="Chaussures">{translateItemSlot('Chaussures')}</option>
+                  <option value="Armure">{translateItemSlot('Armure')}</option>
+                  <option value="Monture">{translateItemSlot('Monture')}</option>
+                  <option value="Amélioration de Monture">
+                    {translateItemSlot('Amélioration de Monture')}
+                  </option>
+                  <option value="NoSlot">{translateItemSlot('NoSlot')}</option>
+                  <option value="Amélioration">{translateItemSlot('Amélioration')}</option>
                 </select>
               </div>
               <div className="flex items-end pb-2">
-                <label className={`flex items-center space-x-2 ${cardData.itemSlot === 'Amélioration de Monture' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
+                <label
+                  className={`flex items-center space-x-2 ${cardData.itemSlot === 'Amélioration de Monture' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                >
                   <input
                     type="checkbox"
                     checked={cardData.isBig}
@@ -517,7 +680,7 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
                     disabled={cardData.itemSlot === 'Amélioration de Monture'}
                     className="w-4 h-4 text-amber-600 rounded focus:ring-amber-500"
                   />
-                  <span className="text-sm font-medium text-gray-700">Gros Objet</span>
+                  <span className="text-sm font-medium text-gray-700">{t('cardForm.bigItem')}</span>
                 </label>
               </div>
             </div>
@@ -527,16 +690,17 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
         {/* Generic Restrictions */}
         {cardData.type !== CardType.FAITHFUL_SERVANT && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Restrictions / Utilisable par</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {t('cardForm.restrictionsLabel')}
+            </label>
             <input
               type="text"
               value={cardData.restrictions || ''}
               onChange={(e) => handleChange('restrictions', e.target.value)}
-              placeholder="ex: Utilisable par l'Elfe uniquement"
+              placeholder={t('cardForm.restrictionsPlaceholder')}
               className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
             />
           </div>
-
         )}
 
         {/* Metadata */}
@@ -548,7 +712,7 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
               onChange={(e) => handleChange('isBaseCard', e.target.checked)}
               className="w-4 h-4 text-amber-600 rounded focus:ring-amber-500"
             />
-            <span className="text-sm font-medium text-gray-700">Carte de base</span>
+            <span className="text-sm font-medium text-gray-700">{t('cardForm.baseCard')}</span>
           </label>
 
           <label className="flex items-center gap-2 cursor-pointer">
@@ -558,14 +722,14 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
               onChange={(e) => handleChange('isValidated', e.target.checked)}
               className="w-4 h-4 text-green-600 rounded focus:ring-green-500"
             />
-            <span className="text-sm font-medium text-gray-700">Carte validée</span>
+            <span className="text-sm font-medium text-gray-700">{t('cardForm.validatedCard')}</span>
           </label>
         </div>
 
         {/* Image Generation Section */}
         <div className="border-t border-b border-gray-200 py-4 my-4 bg-gray-50 -mx-6 px-6">
           <label className="block text-sm font-bold text-gray-800 mb-2">
-            Générateur d'Art Visuel (Nano Banana)
+            {t('cardForm.artGenerator')}
           </label>
 
           <div className="flex gap-2">
@@ -573,7 +737,7 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
               type="text"
               value={cardData.imagePrompt || ''}
               onChange={(e) => handleChange('imagePrompt', e.target.value)}
-              placeholder="Décrivez le monstre/objet..."
+              placeholder={t('cardForm.imagePromptPlaceholder')}
               className="flex-grow p-2 border border-gray-300 rounded focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
             />
             <button
@@ -581,13 +745,11 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
               disabled={isGenerating}
               className="bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 px-4 rounded transition-colors disabled:opacity-50 whitespace-nowrap shadow-sm"
             >
-              {isGenerating ? 'Peinture...' : 'Générer'}
+              {isGenerating ? t('cardForm.generatingBtn') : t('cardForm.generateBtn')}
             </button>
           </div>
           {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
-          <p className="text-[10px] text-gray-500 mt-2 italic">
-            * Le style artistique "Munchkin/John Kovalic" est appliqué automatiquement.
-          </p>
+          <p className="text-[10px] text-gray-500 mt-2 italic">{t('cardForm.artStyleHint')}</p>
 
           <div className="mt-3">
             <input
@@ -600,10 +762,10 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
             />
             <label
               htmlFor="image-upload"
-              className={`w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition-colors cursor-pointer shadow-sm flex items-center justify-center gap-2 ${(isGenerating || isRemovingBg) ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition-colors cursor-pointer shadow-sm flex items-center justify-center gap-2 ${isGenerating || isRemovingBg ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <span>🖼️</span>
-              Importer une image
+              {t('cardForm.importImage')}
             </label>
           </div>
 
@@ -614,29 +776,33 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
                 onClick={handleRemoveBackground}
                 disabled={isRemovingBg || (!removeBgApiKey && !hasDefaultRemoveBgKey)}
                 className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded transition-colors disabled:opacity-50 shadow-sm flex items-center justify-center gap-2"
-                title={(!removeBgApiKey && !hasDefaultRemoveBgKey) ? "Configurez d'abord votre clé API dans les paramètres" : "Supprimer l'arrière-plan de l'image"}
+                title={
+                  !removeBgApiKey && !hasDefaultRemoveBgKey
+                    ? t('cardForm.removeBgKeyHint')
+                    : t('cardForm.removeBgTitle')
+                }
               >
                 {isRemovingBg ? (
                   <>
                     <span className="animate-spin">⏳</span>
-                    Suppression en cours...
+                    {t('cardForm.removingBg')}
                   </>
                 ) : (
                   <>
                     <span>✂️</span>
-                    Supprimer l'arrière-plan
+                    {t('cardForm.removeBg')}
                   </>
                 )}
               </button>
 
-              {(!removeBgApiKey && !hasDefaultRemoveBgKey) && (
+              {!removeBgApiKey && !hasDefaultRemoveBgKey && (
                 <p className="text-xs text-gray-500 mt-1 text-center">
-                  Configurez votre clé API remove.bg dans les paramètres (⚙️) pour utiliser cette fonction.
+                  {t('cardForm.removeBgKeyHint')}
                 </p>
               )}
-              {(!removeBgApiKey && hasDefaultRemoveBgKey) && (
+              {!removeBgApiKey && hasDefaultRemoveBgKey && (
                 <p className="text-xs text-gray-400 mt-1 text-center italic">
-                  Utilisation de la clé API par défaut du serveur.
+                  {t('cardForm.removeBgDefaultKeyHint')}
                 </p>
               )}
             </div>
@@ -646,7 +812,9 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
         {/* Image Style Options */}
         <div className="mb-4 grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Taille de l'image</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {t('cardForm.imageSize')}
+            </label>
             <select
               value={cardData.imageScale || 100}
               onChange={(e) => handleChange('imageScale', parseInt(e.target.value))}
@@ -657,7 +825,7 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
               <option value={130}>130%</option>
               <option value={120}>120%</option>
               <option value={110}>110%</option>
-              <option value={100}>100% (Défaut)</option>
+              <option value={100}>100% ({t('cardForm.default')})</option>
               <option value={95}>95%</option>
               <option value={90}>90%</option>
               <option value={80}>80%</option>
@@ -665,7 +833,9 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Position (X / Y)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {t('cardForm.positionXY')}
+            </label>
             <div className="flex gap-2">
               <input
                 type="number"
@@ -690,13 +860,15 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
         {/* Description Box Size Control */}
         <div className="mb-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Taille de l'encart "Description"</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {t('cardForm.descriptionBoxSize')}
+            </label>
             <select
               value={cardData.descriptionBoxScale || 100}
               onChange={(e) => handleChange('descriptionBoxScale', parseInt(e.target.value))}
               className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
             >
-              <option value={100}>100% (Défaut)</option>
+              <option value={100}>100% ({t('cardForm.default')})</option>
               <option value={110}>110%</option>
               <option value={120}>120%</option>
               <option value={130}>130%</option>
@@ -705,15 +877,15 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
               <option value={160}>160%</option>
               <option value={170}>170%</option>
             </select>
-            <p className="text-xs text-gray-500 mt-1 italic">
-              Augmentez la taille si le texte est trop petit. L'encart s'agrandira vers le bas.
-            </p>
+            <p className="text-xs text-gray-500 mt-1 italic">{t('cardForm.descriptionBoxHint')}</p>
           </div>
         </div>
 
         {/* Descriptions */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            {t('cardForm.description')}
+          </label>
           <textarea
             value={cardData.description || ''}
             onChange={(e) => handleChange('description', e.target.value)}
@@ -725,7 +897,7 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
         {cardData.type === CardType.MONSTER && (
           <div>
             <label className="block text-sm font-medium text-red-700 mb-1">
-              {globalSettings.language === 'en' ? 'Bad Stuff' : 'Incident Fâcheux'}
+              {t('cardForm.badStuff')}
             </label>
             <textarea
               value={cardData.badStuff || ''}
@@ -739,22 +911,21 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
         {/* Review / Internal Comments */}
         <div className="border-t border-gray-100 pt-4 mt-4">
           <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-2">
-            <span>📝 Commentaire Interne (Review)</span>
-            <span className="text-[10px] font-normal text-gray-500 bg-gray-100 px-2 py-0.5 rounded">Ne s'affiche pas sur la carte</span>
+            <span>📝 {t('cardForm.internalComment')}</span>
+            <span className="text-[10px] font-normal text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+              {t('cardForm.internalCommentHint')}
+            </span>
           </label>
           <textarea
             value={cardData.internalComment || ''}
             onChange={(e) => handleChange('internalComment', e.target.value)}
             rows={3}
-            placeholder="Notes de review, suggestions de modifications..."
+            placeholder={t('cardForm.internalCommentPlaceholder')}
             className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-gray-400 focus:border-gray-400 bg-gray-50/50 italic"
           />
         </div>
-
       </div>
-
-    </div >
-
+    </div>
   );
 };
 
