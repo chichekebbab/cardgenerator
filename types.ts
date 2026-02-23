@@ -64,6 +64,7 @@ export const INITIAL_CARD_DATA: CardData = {
     "Génère une illustration au format carré (1x1). Le style artistique doit imiter parfaitement celui du jeu de cartes 'Munchkin' et du dessinateur John Kovalic : un style cartoon satirique, dessiné à la main, avec des contours noirs épais et une ambiance humoristique de fantasy. L'image doit présenter un seul élément isolé, centré. Il ne doit y avoir absolument aucun texte sur l'image. Le fond doit être une couleur unie, neutre et simple, sans aucun décor ni détail. Voici l'élément à générer :",
   imagePrompt: 'Un monstre de dessin animé drôle fait de spaghettis',
   imageData: null,
+  storedImageUrl: '/demo/demo_card.png',
   itemSlot: '',
   isBig: false,
   restrictions: '',

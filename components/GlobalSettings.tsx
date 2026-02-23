@@ -33,6 +33,7 @@ const GlobalSettingsComponent: React.FC<GlobalSettingsProps> = ({
       gold: '3',
       imagePrePrompt: INITIAL_CARD_DATA.imagePrePrompt,
       imagePrompt: t('globalSettings.demoArtPrompt'),
+      storedImageUrl: '/demo/demo_card.png',
       imageData: null,
       itemSlot: '',
       isBig: false,

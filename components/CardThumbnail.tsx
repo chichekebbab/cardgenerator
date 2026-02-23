@@ -25,7 +25,7 @@ const CardThumbnail: React.FC<CardThumbnailProps> = ({ card, onClick, isSelected
 
     if (card.storedImageUrl) {
       const url = card.storedImageUrl.trim();
-      if (!url.startsWith('http') && !url.startsWith('data:')) {
+      if (!url.startsWith('http') && !url.startsWith('data:') && !url.startsWith('/')) {
         setImgError(true);
         setDisplaySrc(undefined);
         return;
