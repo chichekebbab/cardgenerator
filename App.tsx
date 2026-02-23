@@ -165,17 +165,22 @@ function responseJSON(data) {
 
 const App: React.FC = () => {
   // Initialisation avec ID unique si manquant
-  const initCard = { ...INITIAL_CARD_DATA, id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString() };
+  const initCard = {
+    ...INITIAL_CARD_DATA,
+    id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(),
+  };
 
   const [cardData, setCardData] = useState<CardData>(initCard);
   const [savedCards, setSavedCards] = useState<CardData[]>([]);
-  const [scriptUrl, setScriptUrl] = useState<string>("");
+  const [scriptUrl, setScriptUrl] = useState<string>('');
 
-  const [removeBgApiKey, setRemoveBgApiKey] = useState<string>(""); // remove.bg API key
-  const [geminiApiKey, setGeminiApiKey] = useState<string>(""); // New: Gemini API key
+  const [removeBgApiKey, setRemoveBgApiKey] = useState<string>(''); // remove.bg API key
+  const [geminiApiKey, setGeminiApiKey] = useState<string>(''); // New: Gemini API key
   const [showSettings, setShowSettings] = useState(false);
   const [activeTab, setActiveTab] = useState<'config' | 'code'>('config'); // Nouvel état pour les onglets modal settings
-  const [activeView, setActiveView] = useState<'editor' | 'gallery' | 'list' | 'settings'>('editor'); // Ajout de 'settings'
+  const [activeView, setActiveView] = useState<'editor' | 'gallery' | 'list' | 'settings'>(
+    'editor',
+  ); // Ajout de 'settings'
   const [globalSettings, setGlobalSettings] = useState<GlobalSettings>(DEFAULT_GLOBAL_SETTINGS);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingList, setIsLoadingList] = useState(false);
@@ -183,7 +188,9 @@ const App: React.FC = () => {
   const [showImportModal, setShowImportModal] = useState(false);
   const [showLegalModal, setShowLegalModal] = useState(false);
   const [legalActiveTab, setLegalActiveTab] = useState<'mentions' | 'privacy' | 'cgu'>('mentions');
-  const [listSaveStatus, setListSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [listSaveStatus, setListSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>(
+    'idle',
+  );
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false); // Track if current card has changes
   const { showNotification } = useNotification();
 
@@ -192,18 +199,18 @@ const App: React.FC = () => {
 
   // Charger les préférences depuis localStorage
   useEffect(() => {
-    const savedUrl = localStorage.getItem("google_script_url");
+    const savedUrl = localStorage.getItem('google_script_url');
     if (savedUrl) {
       setScriptUrl(savedUrl);
       loadSavedCards(savedUrl);
     }
 
-    const savedApiKey = localStorage.getItem("removebg_api_key");
+    const savedApiKey = localStorage.getItem('removebg_api_key');
     if (savedApiKey) {
       setRemoveBgApiKey(savedApiKey);
     }
 
-    const savedGeminiKey = localStorage.getItem("gemini_api_key");
+    const savedGeminiKey = localStorage.getItem('gemini_api_key');
     if (savedGeminiKey) {
       setGeminiApiKey(savedGeminiKey);
     }
@@ -221,7 +228,7 @@ const App: React.FC = () => {
       try {
         setGlobalSettings(JSON.parse(savedGlobalSettings));
       } catch (e) {
-        console.error("Erreur chargement global settings", e);
+        console.error('Erreur chargement global settings', e);
       }
     }
   }, []);
@@ -241,9 +248,10 @@ const App: React.FC = () => {
     // Deduplicate
     const uniqueFonts = [...new Set(fonts)];
     const families = uniqueFonts
-      .map(f => `family=${encodeURIComponent(f)}:wght@400;700`)
+      .filter((f) => !['Windlass', 'Caslon Antique'].includes(f))
+      .map((f) => `family=${encodeURIComponent(f)}:wght@400;700`)
       .join('&');
-    const href = `https://fonts.googleapis.com/css2?${families}&display=swap`;
+    const href = families ? `https://fonts.googleapis.com/css2?${families}&display=swap` : '';
 
     // Replace or create the link tag
     let link = document.getElementById('dynamic-google-fonts') as HTMLLinkElement | null;
@@ -253,7 +261,11 @@ const App: React.FC = () => {
       link.rel = 'stylesheet';
       document.head.appendChild(link);
     }
-    link.href = href;
+    if (href) {
+      link.href = href;
+    } else {
+      link.href = '';
+    }
   }, [globalSettings.fontTitle, globalSettings.fontDescription, globalSettings.fontMeta]);
 
   const handleResetGlobalSettings = () => {
@@ -274,10 +286,10 @@ const App: React.FC = () => {
       const cards = await fetchCardsFromSheet(url);
       setSavedCards(cards.reverse()); // Les plus récents en premier
     } catch (e: any) {
-      console.error("Erreur chargement cartes", e);
+      console.error('Erreur chargement cartes', e);
       // Détection sommaire des erreurs de configuration/CORS
-      if (e.message.includes("Failed to fetch") || e.message.includes("Erreur HTTP")) {
-        setConfigError("Impossible de communiquer avec Google Script.");
+      if (e.message.includes('Failed to fetch') || e.message.includes('Erreur HTTP')) {
+        setConfigError('Impossible de communiquer avec Google Script.');
       }
     } finally {
       setIsLoadingList(false);
@@ -285,13 +297,13 @@ const App: React.FC = () => {
   };
 
   const handleScriptUrlSave = () => {
-    localStorage.setItem("google_script_url", scriptUrl);
+    localStorage.setItem('google_script_url', scriptUrl);
 
-    localStorage.setItem("removebg_api_key", removeBgApiKey);
-    localStorage.setItem("gemini_api_key", geminiApiKey);
+    localStorage.setItem('removebg_api_key', removeBgApiKey);
+    localStorage.setItem('gemini_api_key', geminiApiKey);
     setShowSettings(false);
     loadSavedCards(scriptUrl);
-    showNotification("Paramètres enregistrés !", 'success');
+    showNotification('Paramètres enregistrés !', 'success');
   };
 
   const handleSaveCard = async (cardToSave?: CardData | any) => {
@@ -299,42 +311,61 @@ const App: React.FC = () => {
     // Events have properties like 'target', 'preventDefault', 'nativeEvent', etc.
     // CardData has 'id', 'title', 'type', etc.
     // IMPORTANT: Check that it's NOT a React event (which would have 'target' or 'nativeEvent')
-    const isReactEvent = cardToSave && typeof cardToSave === 'object' && ('target' in cardToSave || 'nativeEvent' in cardToSave || 'currentTarget' in cardToSave);
-    const isValidCardData = cardToSave && typeof cardToSave === 'object' && 'id' in cardToSave && 'title' in cardToSave && !isReactEvent;
+    const isReactEvent =
+      cardToSave &&
+      typeof cardToSave === 'object' &&
+      ('target' in cardToSave || 'nativeEvent' in cardToSave || 'currentTarget' in cardToSave);
+    const isValidCardData =
+      cardToSave &&
+      typeof cardToSave === 'object' &&
+      'id' in cardToSave &&
+      'title' in cardToSave &&
+      !isReactEvent;
     const dataToSave = isValidCardData ? cardToSave : cardData;
     const calledFromBackgroundRemoval = isValidCardData;
 
-    console.log("[SAVE] Starting save process...");
-    console.log("[SAVE] Card to save:", { id: dataToSave.id, title: dataToSave.title, hasImageData: !!dataToSave.imageData, hasStoredUrl: !!dataToSave.storedImageUrl });
-    console.log("[SAVE] Called from background removal:", calledFromBackgroundRemoval);
+    console.log('[SAVE] Starting save process...');
+    console.log('[SAVE] Card to save:', {
+      id: dataToSave.id,
+      title: dataToSave.title,
+      hasImageData: !!dataToSave.imageData,
+      hasStoredUrl: !!dataToSave.storedImageUrl,
+    });
+    console.log('[SAVE] Called from background removal:', calledFromBackgroundRemoval);
 
     setIsSaving(true);
     try {
       const result = await saveCardToSheet(scriptUrl, dataToSave);
-      console.log("[SAVE] Save result:", result);
+      console.log('[SAVE] Save result:', result);
 
       // Si le serveur a renvoyé une URL d'image valide (qui ressemble à une URL)
       // On met à jour l'état local pour utiliser l'URL stockée
-      if (result.imageUrl && (result.imageUrl.startsWith('http') || result.imageUrl.startsWith('data:'))) {
-        console.log("[SAVE] Valid image URL received:", result.imageUrl.substring(0, 100) + "...");
+      if (
+        result.imageUrl &&
+        (result.imageUrl.startsWith('http') || result.imageUrl.startsWith('data:'))
+      ) {
+        console.log('[SAVE] Valid image URL received:', result.imageUrl.substring(0, 100) + '...');
 
         // Keep imageData if it exists (important for freshly modified images)
         // Only clear it if we're confident the URL points to the correct image
         if (dataToSave.imageData) {
-          console.log("[SAVE] Keeping imageData, setting storedImageUrl");
+          console.log('[SAVE] Keeping imageData, setting storedImageUrl');
           // For freshly generated/modified images, keep imageData and set storedImageUrl
           // The image will display from imageData until the user reloads the card
-          setCardData(prev => ({ ...prev, ...dataToSave, storedImageUrl: result.imageUrl }));
+          setCardData((prev) => ({ ...prev, ...dataToSave, storedImageUrl: result.imageUrl }));
         } else {
-          console.log("[SAVE] No imageData, using storedImageUrl only");
+          console.log('[SAVE] No imageData, using storedImageUrl only');
           // For cards without local imageData, use the stored URL
-          setCardData(prev => ({ ...prev, storedImageUrl: result.imageUrl, imageData: null }));
+          setCardData((prev) => ({ ...prev, storedImageUrl: result.imageUrl, imageData: null }));
         }
       } else {
-        // Si l'URL renvoyée est vide ou invalide (ex: juste un nom de fichier), 
+        // Si l'URL renvoyée est vide ou invalide (ex: juste un nom de fichier),
         // on GARDE l'image locale (imageData) pour ne pas casser l'affichage.
         if (result.imageUrl) {
-          console.warn("[SAVE] URL invalide reçue du script (nom de fichier ?). Conservation de l'image locale.", result.imageUrl);
+          console.warn(
+            "[SAVE] URL invalide reçue du script (nom de fichier ?). Conservation de l'image locale.",
+            result.imageUrl,
+          );
         }
       }
 
@@ -345,13 +376,14 @@ const App: React.FC = () => {
       // This ensures navigation shows the latest data without waiting for the 2s sheet refresh
       const updatedDataToSave = {
         ...dataToSave,
-        ...(result.imageUrl && (result.imageUrl.startsWith('http') || result.imageUrl.startsWith('data:'))
+        ...(result.imageUrl &&
+        (result.imageUrl.startsWith('http') || result.imageUrl.startsWith('data:'))
           ? { storedImageUrl: result.imageUrl }
           : {}),
         imageData: null, // savedCards should not hold base64 image data
       };
-      setSavedCards(prev => {
-        const existingIndex = prev.findIndex(c => c.id === dataToSave.id);
+      setSavedCards((prev) => {
+        const existingIndex = prev.findIndex((c) => c.id === dataToSave.id);
         if (existingIndex !== -1) {
           // Update existing card in-place
           const updated = [...prev];
@@ -365,51 +397,56 @@ const App: React.FC = () => {
 
       // Only show alert if NOT called from background removal (to avoid double alerts)
       if (!calledFromBackgroundRemoval) {
-        showNotification("Carte sauvegardée avec succès !", 'success');
+        showNotification('Carte sauvegardée avec succès !', 'success');
       }
 
-      console.log("[SAVE] Scheduling cards list refresh in 2 seconds...");
+      console.log('[SAVE] Scheduling cards list refresh in 2 seconds...');
       // Delay the list refresh by 2 seconds to give Google Sheets time to fully update
       // Store the current card ID to check later if we should update cardData
       const savedCardId = dataToSave.id;
 
       setTimeout(async () => {
-        console.log("[SAVE] Refreshing cards list...");
+        console.log('[SAVE] Refreshing cards list...');
         await loadSavedCards(scriptUrl);
 
         // After reloading, update cardData only if the user is still editing the same card
         // This prevents unwanted navigation when user has moved to a different card/view
-        console.log("[SAVE] Checking if we should sync card data. Current card ID:", cardData.id, "Saved card ID:", savedCardId);
+        console.log(
+          '[SAVE] Checking if we should sync card data. Current card ID:',
+          cardData.id,
+          'Saved card ID:',
+          savedCardId,
+        );
 
         // Use a callback to access the most recent cardData value
-        setCardData(currentCardData => {
+        setCardData((currentCardData) => {
           if (currentCardData.id === savedCardId) {
-            console.log("[SAVE] User still on same card, updating silently from savedCards");
+            console.log('[SAVE] User still on same card, updating silently from savedCards');
             // Find the updated card in savedCards using a ref callback won't work here
             // We need to use setSavedCards callback or find another way
             // For now, we don't update cardData here - it was already updated above after save
-            console.log("[SAVE] Card data already up-to-date from save response");
+            console.log('[SAVE] Card data already up-to-date from save response');
           } else {
-            console.log("[SAVE] User has navigated away, not updating cardData");
+            console.log('[SAVE] User has navigated away, not updating cardData');
           }
           return currentCardData; // No change needed, already updated above
         });
       }, 2000);
     } catch (e: any) {
-      console.error("[SAVE] Save error:", e);
-      showNotification("Erreur lors de la sauvegarde : " + e.message, 'error');
+      console.error('[SAVE] Save error:', e);
+      showNotification('Erreur lors de la sauvegarde : ' + e.message, 'error');
     } finally {
-      console.log("[SAVE] Save process completed");
+      console.log('[SAVE] Save process completed');
       setIsSaving(false);
     }
   };
 
   const handleDeleteCard = async () => {
-    if (!confirm("Êtes-vous sûr de vouloir supprimer cette carte ?")) return;
+    if (!confirm('Êtes-vous sûr de vouloir supprimer cette carte ?')) return;
 
     if (!scriptUrl) {
       // Si pas de script URL, on supprime juste de l'état local (si c'est dans la liste)
-      setSavedCards(prev => prev.filter(c => c.id !== cardData.id));
+      setSavedCards((prev) => prev.filter((c) => c.id !== cardData.id));
       handleNewCard();
       return;
     }
@@ -419,9 +456,9 @@ const App: React.FC = () => {
       await deleteCardFromSheet(scriptUrl, cardData.id);
       await loadSavedCards(scriptUrl);
       handleNewCard();
-      showNotification("Carte supprimée !", 'success');
+      showNotification('Carte supprimée !', 'success');
     } catch (e: any) {
-      showNotification("Erreur lors de la suppression : " + e.message, 'error');
+      showNotification('Erreur lors de la suppression : ' + e.message, 'error');
     } finally {
       setIsSaving(false);
     }
@@ -432,21 +469,21 @@ const App: React.FC = () => {
     const duplicatedCard = {
       ...cardData,
       id: newId,
-      title: cardData.title ? `${cardData.title} (Copie)` : "Copie",
+      title: cardData.title ? `${cardData.title} (Copie)` : 'Copie',
       imageData: null, // On ne duplique pas l'image
-      storedImageUrl: undefined // On ne duplique pas l'image stockée
+      storedImageUrl: undefined, // On ne duplique pas l'image stockée
     };
     setCardData(duplicatedCard);
     // On reste sur l'éditeur pour modifier la copie
     setActiveView('editor');
-    showNotification("Carte dupliquée ! Vous éditez maintenant la copie.", 'success');
+    showNotification('Carte dupliquée ! Vous éditez maintenant la copie.', 'success');
   };
 
   const handleNewCard = (initialData?: Partial<CardData>) => {
     const baseCard = {
       ...INITIAL_CARD_DATA,
       id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(),
-      imagePrePrompt: globalSettings.defaultImagePrePrompt // Use custom pre-prompt
+      imagePrePrompt: globalSettings.defaultImagePrePrompt, // Use custom pre-prompt
     };
     setCardData(initialData ? { ...baseCard, ...initialData } : baseCard);
     setActiveView('editor'); // Switch to editor when creating new card
@@ -458,7 +495,7 @@ const App: React.FC = () => {
 
     if (!scriptUrl) {
       // If no script URL, just add to local state
-      setSavedCards(prev => [...cards, ...prev]);
+      setSavedCards((prev) => [...cards, ...prev]);
       successCount = cards.length;
       if (cards.length > 0) {
         handleSelectCard(cards[0]);
@@ -473,7 +510,10 @@ const App: React.FC = () => {
       try {
         const result = await saveCardToSheet(scriptUrl, card);
         // Update the card with the image URL if returned
-        if (result.imageUrl && (result.imageUrl.startsWith('http') || result.imageUrl.startsWith('data:'))) {
+        if (
+          result.imageUrl &&
+          (result.imageUrl.startsWith('http') || result.imageUrl.startsWith('data:'))
+        ) {
           card.storedImageUrl = result.imageUrl;
         }
         successCount++;
@@ -494,7 +534,10 @@ const App: React.FC = () => {
       if (successCount === cards.length) {
         showNotification(`${successCount} carte(s) importée(s) avec succès !`, 'success');
       } else {
-        showNotification(`${successCount}/${cards.length} carte(s) importée(s).`, successCount > 0 ? 'info' : 'error');
+        showNotification(
+          `${successCount}/${cards.length} carte(s) importée(s).`,
+          successCount > 0 ? 'info' : 'error',
+        );
       }
     }
   };
@@ -513,9 +556,7 @@ const App: React.FC = () => {
 
   // Get cards of the same type as the current card, sorted by creation date
   const getSameTypeCards = (currentCard: CardData): CardData[] => {
-    return savedCards
-      .filter(card => card.type === currentCard.type)
-      .reverse(); // Oldest first (since savedCards is newest first)
+    return savedCards.filter((card) => card.type === currentCard.type).reverse(); // Oldest first (since savedCards is newest first)
   };
 
   // Navigate to next/previous card of the same type
@@ -523,7 +564,7 @@ const App: React.FC = () => {
     const sameTypeCards = getSameTypeCards(cardData);
     if (sameTypeCards.length <= 1) return; // No siblings to navigate to
 
-    const currentIndex = sameTypeCards.findIndex(c => c.id === cardData.id);
+    const currentIndex = sameTypeCards.findIndex((c) => c.id === cardData.id);
     if (currentIndex === -1) return; // Current card not found
 
     let newIndex: number;
@@ -541,7 +582,7 @@ const App: React.FC = () => {
   // Detect changes to cardData to mark as having unsaved changes
   useEffect(() => {
     // Find the saved version of this card
-    const savedVersion = savedCards.find(c => c.id === cardData.id);
+    const savedVersion = savedCards.find((c) => c.id === cardData.id);
 
     // If card doesn't exist in saved cards yet (new card), check if it has any content
     if (!savedVersion) {
@@ -619,7 +660,7 @@ const App: React.FC = () => {
 
     try {
       // Update local state immediately for responsiveness
-      setSavedCards(prev => prev.map(c => c.id === updatedCard.id ? updatedCard : c));
+      setSavedCards((prev) => prev.map((c) => (c.id === updatedCard.id ? updatedCard : c)));
 
       // Also update cardData if it's the same card being edited
       if (cardData.id === updatedCard.id) {
@@ -648,8 +689,8 @@ const App: React.FC = () => {
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    showNotification("Code copié !", 'info');
-  }
+    showNotification('Code copié !', 'info');
+  };
 
   return (
     <div className="min-h-screen bg-stone-100 font-sans text-gray-900 flex flex-col">
@@ -662,7 +703,10 @@ const App: React.FC = () => {
               <div className="text-3xl">🗡️</div>
               <div>
                 <h1 className="text-xl font-bold tracking-wider">MunchkinGen</h1>
-                <p className="text-xs text-amber-200 opacity-80">Complétez votre jeu avec vos propres cartes, ou construisez votre deck entièrement !</p>
+                <p className="text-xs text-amber-200 opacity-80">
+                  Complétez votre jeu avec vos propres cartes, ou construisez votre deck entièrement
+                  !
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-4">
@@ -673,7 +717,13 @@ const App: React.FC = () => {
               >
                 ⚙️
               </button>
-              <a href="https://github.com/chichekebbab/cardgenerator" target="_blank" className="text-sm text-amber-300 hover:text-white underline hidden sm:inline">GitHub</a>
+              <a
+                href="https://github.com/chichekebbab/cardgenerator"
+                target="_blank"
+                className="text-sm text-amber-300 hover:text-white underline hidden sm:inline"
+              >
+                GitHub
+              </a>
             </div>
           </div>
 
@@ -681,46 +731,55 @@ const App: React.FC = () => {
           <nav className="flex px-4 gap-1">
             <button
               onClick={() => setActiveView('editor')}
-              className={`px-6 py-2 font-bold text-sm rounded-t-lg transition-all ${activeView === 'editor'
-                ? 'bg-stone-100 text-amber-900 shadow-sm'
-                : 'bg-amber-800/50 text-amber-200 hover:bg-amber-800 hover:text-white'
-                }`}
+              className={`px-6 py-2 font-bold text-sm rounded-t-lg transition-all ${
+                activeView === 'editor'
+                  ? 'bg-stone-100 text-amber-900 shadow-sm'
+                  : 'bg-amber-800/50 text-amber-200 hover:bg-amber-800 hover:text-white'
+              }`}
             >
               <span className="mr-2">✏️</span>
               Éditeur
             </button>
             <button
               onClick={() => setActiveView('gallery')}
-              className={`px-6 py-2 font-bold text-sm rounded-t-lg transition-all flex items-center gap-2 ${activeView === 'gallery'
-                ? 'bg-stone-100 text-amber-900 shadow-sm'
-                : 'bg-amber-800/50 text-amber-200 hover:bg-amber-800 hover:text-white'
-                }`}
+              className={`px-6 py-2 font-bold text-sm rounded-t-lg transition-all flex items-center gap-2 ${
+                activeView === 'gallery'
+                  ? 'bg-stone-100 text-amber-900 shadow-sm'
+                  : 'bg-amber-800/50 text-amber-200 hover:bg-amber-800 hover:text-white'
+              }`}
             >
               <span>🎴</span>
               Galerie
               {savedCards.length > 0 && (
-                <span className={`text-xs px-1.5 py-0.5 rounded-full ${activeView === 'gallery' ? 'bg-amber-600 text-white' : 'bg-amber-700 text-amber-100'
-                  }`}>
+                <span
+                  className={`text-xs px-1.5 py-0.5 rounded-full ${
+                    activeView === 'gallery'
+                      ? 'bg-amber-600 text-white'
+                      : 'bg-amber-700 text-amber-100'
+                  }`}
+                >
                   {savedCards.length}
                 </span>
               )}
             </button>
             <button
               onClick={() => setActiveView('list')}
-              className={`px-6 py-2 font-bold text-sm rounded-t-lg transition-all flex items-center gap-2 ${activeView === 'list'
-                ? 'bg-stone-100 text-amber-900 shadow-sm'
-                : 'bg-amber-800/50 text-amber-200 hover:bg-amber-800 hover:text-white'
-                }`}
+              className={`px-6 py-2 font-bold text-sm rounded-t-lg transition-all flex items-center gap-2 ${
+                activeView === 'list'
+                  ? 'bg-stone-100 text-amber-900 shadow-sm'
+                  : 'bg-amber-800/50 text-amber-200 hover:bg-amber-800 hover:text-white'
+              }`}
             >
               <span>📋</span>
               Liste
             </button>
             <button
               onClick={() => setActiveView('settings')}
-              className={`px-6 py-2 font-bold text-sm rounded-t-lg transition-all flex items-center gap-2 ${activeView === 'settings'
-                ? 'bg-stone-100 text-amber-900 shadow-sm'
-                : 'bg-amber-800/50 text-amber-200 hover:bg-amber-800 hover:text-white'
-                }`}
+              className={`px-6 py-2 font-bold text-sm rounded-t-lg transition-all flex items-center gap-2 ${
+                activeView === 'settings'
+                  ? 'bg-stone-100 text-amber-900 shadow-sm'
+                  : 'bg-amber-800/50 text-amber-200 hover:bg-amber-800 hover:text-white'
+              }`}
             >
               <span>⚙️</span>
               Paramètres
@@ -735,7 +794,15 @@ const App: React.FC = () => {
           <div className="bg-stone-800 text-white w-full max-w-4xl rounded-lg shadow-2xl border border-amber-600 flex flex-col max-h-[90vh]">
             <div className="flex justify-between items-center p-4 border-b border-stone-700">
               <h3 className="text-lg font-bold text-amber-500">Configuration Backend</h3>
-              <button onClick={() => { setShowSettings(false); setConfigError(null); }} className="text-gray-400 hover:text-white text-2xl leading-none">&times;</button>
+              <button
+                onClick={() => {
+                  setShowSettings(false);
+                  setConfigError(null);
+                }}
+                className="text-gray-400 hover:text-white text-2xl leading-none"
+              >
+                &times;
+              </button>
             </div>
 
             <div className="flex border-b border-stone-700">
@@ -758,31 +825,62 @@ const App: React.FC = () => {
                 <div className="space-y-6">
                   <div className="bg-stone-900/50 p-4 rounded-lg border border-stone-700 space-y-4">
                     <p className="text-sm text-amber-100">
-                      Cet outil a besoin d'une base de données pour sauvegarder vos cartes.
-                      Vous pouvez en créer une <strong>gratuitement</strong> et <strong>facilement</strong> avec Google Sheets.
+                      Cet outil a besoin d'une base de données pour sauvegarder vos cartes. Vous
+                      pouvez en créer une <strong>gratuitement</strong> et{' '}
+                      <strong>facilement</strong> avec Google Sheets.
                     </p>
 
                     <div className="bg-amber-900/20 border border-amber-500/30 rounded p-4 text-sm text-amber-100/90">
                       <p className="font-bold mb-3 text-amber-400">Guide d'installation :</p>
                       <ol className="list-decimal ml-5 space-y-2 text-xs">
-                        <li>Créez un nouveau <strong>Google Sheet</strong> sur votre Drive (doit être public ou accessible).</li>
-                        <li>Dans le fichier, allez au menu <strong>Extensions</strong> &gt; <strong>Apps Script</strong>.</li>
-                        <li>Copiez le code complet depuis l'onglet <strong className="text-amber-300">Code Script Google</strong> de cette fenêtre.</li>
-                        <li>Collez-le dans l'éditeur Apps Script (fichier <code>Code.gs</code>) en remplaçant le contenu existant.</li>
-                        <li>Cliquez sur <strong>Déployer</strong> &gt; <strong>Nouveau déploiement</strong>.</li>
-                        <li>Cliquez sur la roue dentée "Sélectionnez le type" &gt; <strong>Application Web</strong>.</li>
-                        <li>Configurez ainsi :
+                        <li>
+                          Créez un nouveau <strong>Google Sheet</strong> sur votre Drive (doit être
+                          public ou accessible).
+                        </li>
+                        <li>
+                          Dans le fichier, allez au menu <strong>Extensions</strong> &gt;{' '}
+                          <strong>Apps Script</strong>.
+                        </li>
+                        <li>
+                          Copiez le code complet depuis l'onglet{' '}
+                          <strong className="text-amber-300">Code Script Google</strong> de cette
+                          fenêtre.
+                        </li>
+                        <li>
+                          Collez-le dans l'éditeur Apps Script (fichier <code>Code.gs</code>) en
+                          remplaçant le contenu existant.
+                        </li>
+                        <li>
+                          Cliquez sur <strong>Déployer</strong> &gt;{' '}
+                          <strong>Nouveau déploiement</strong>.
+                        </li>
+                        <li>
+                          Cliquez sur la roue dentée "Sélectionnez le type" &gt;{' '}
+                          <strong>Application Web</strong>.
+                        </li>
+                        <li>
+                          Configurez ainsi :
                           <ul className="list-disc ml-4 mt-1 space-y-1 text-amber-200/80">
-                            <li>Exécuter en tant que : <strong>Moi</strong></li>
-                            <li>Qui a accès : <strong>Tout le monde</strong> (Important pour que l'app fonctionne)</li>
+                            <li>
+                              Exécuter en tant que : <strong>Moi</strong>
+                            </li>
+                            <li>
+                              Qui a accès : <strong>Tout le monde</strong> (Important pour que l'app
+                              fonctionne)
+                            </li>
                           </ul>
                         </li>
-                        <li>Cliquez sur <strong>Déployer</strong>, copiez l'URL de l'application Web et collez-la ci-dessous.</li>
+                        <li>
+                          Cliquez sur <strong>Déployer</strong>, copiez l'URL de l'application Web
+                          et collez-la ci-dessous.
+                        </li>
                       </ol>
                     </div>
 
                     <div>
-                      <label className="block text-sm mb-2 text-amber-100 font-bold">URL de l'application Web (Google Apps Script)</label>
+                      <label className="block text-sm mb-2 text-amber-100 font-bold">
+                        URL de l'application Web (Google Apps Script)
+                      </label>
                       <input
                         type="text"
                         value={scriptUrl}
@@ -797,50 +895,74 @@ const App: React.FC = () => {
                     <div className="border-b border-stone-700 pb-2">
                       <h4 className="text-amber-400 font-bold text-sm">Capacités IA (Optionnel)</h4>
                       <p className="text-xs text-stone-400 mt-1">
-                        Si vous souhaitez rajouter des capacités IA, comme générer le texte ou l'image des cartes,
-                        ou supprimer le fond des cartes, il vous faut renseigner des clés API.
+                        Si vous souhaitez rajouter des capacités IA, comme générer le texte ou
+                        l'image des cartes, ou supprimer le fond des cartes, il vous faut renseigner
+                        des clés API.
                       </p>
                     </div>
 
                     <div>
-                      <label className="block text-sm mb-2 text-amber-100 font-bold">Clé API remove.bg (suppression d'arrière-plan)</label>
+                      <label className="block text-sm mb-2 text-amber-100 font-bold">
+                        Clé API remove.bg (suppression d'arrière-plan)
+                      </label>
                       <input
                         type="text"
                         value={removeBgApiKey}
                         onChange={(e) => {
                           const newVal = e.target.value;
                           setRemoveBgApiKey(newVal);
-                          localStorage.setItem("removebg_api_key", newVal);
+                          localStorage.setItem('removebg_api_key', newVal);
                         }}
                         placeholder="Votre clé API remove.bg"
                         className="w-full p-3 rounded bg-stone-950 border border-stone-600 text-amber-100 text-sm font-mono focus:border-amber-500 outline-none placeholder-stone-600"
                       />
                       <p className="text-xs text-stone-500 mt-1">
-                        Si vide, la clé par défaut du serveur sera utilisée (si disponible). Obtenez votre clé API sur <a href="https://www.remove.bg/api" target="_blank" className="underline hover:text-amber-200">remove.bg/api</a>
+                        Si vide, la clé par défaut du serveur sera utilisée (si disponible). Obtenez
+                        votre clé API sur{' '}
+                        <a
+                          href="https://www.remove.bg/api"
+                          target="_blank"
+                          className="underline hover:text-amber-200"
+                        >
+                          remove.bg/api
+                        </a>
                       </p>
                     </div>
 
                     <div>
-                      <label className="block text-sm mb-2 text-amber-100 font-bold">Clé API Gemini (Génération d'images)</label>
+                      <label className="block text-sm mb-2 text-amber-100 font-bold">
+                        Clé API Gemini (Génération d'images)
+                      </label>
                       <input
                         type="text"
                         value={geminiApiKey}
                         onChange={(e) => {
                           const newVal = e.target.value;
                           setGeminiApiKey(newVal);
-                          localStorage.setItem("gemini_api_key", newVal);
+                          localStorage.setItem('gemini_api_key', newVal);
                         }}
                         placeholder="Votre clé API Google AI Studio"
                         className="w-full p-3 rounded bg-stone-950 border border-stone-600 text-amber-100 text-sm font-mono focus:border-amber-500 outline-none placeholder-stone-600"
                       />
                       <p className="text-xs text-stone-500 mt-1">
-                        Si vide, la clé par défaut du serveur sera utilisée (si disponible). Obtenez une clé sur <a href="https://aistudio.google.com/app/apikey" target="_blank" className="underline hover:text-amber-200">aistudio.google.com</a>
+                        Si vide, la clé par défaut du serveur sera utilisée (si disponible). Obtenez
+                        une clé sur{' '}
+                        <a
+                          href="https://aistudio.google.com/app/apikey"
+                          target="_blank"
+                          className="underline hover:text-amber-200"
+                        >
+                          aistudio.google.com
+                        </a>
                       </p>
                     </div>
                   </div>
 
                   <div className="flex justify-end pt-2">
-                    <button onClick={handleScriptUrlSave} className="bg-amber-600 px-8 py-2.5 rounded font-bold hover:bg-amber-500 text-white shadow-lg transition-all active:scale-95">
+                    <button
+                      onClick={handleScriptUrlSave}
+                      className="bg-amber-600 px-8 py-2.5 rounded font-bold hover:bg-amber-500 text-white shadow-lg transition-all active:scale-95"
+                    >
                       Sauvegarder les paramètres
                     </button>
                   </div>
@@ -850,8 +972,12 @@ const App: React.FC = () => {
                       <p className="font-bold flex items-center gap-2">⚠️ {configError}</p>
                       <p>Vérifiez que votre déploiement est configuré ainsi :</p>
                       <ul className="list-disc ml-5 space-y-1 text-amber-100/80 text-xs">
-                        <li>Exécuter en tant que : <strong>Moi</strong></li>
-                        <li>Qui a accès : <strong>Tout le monde</strong></li>
+                        <li>
+                          Exécuter en tant que : <strong>Moi</strong>
+                        </li>
+                        <li>
+                          Qui a accès : <strong>Tout le monde</strong>
+                        </li>
                       </ul>
                     </div>
                   )}
@@ -860,7 +986,8 @@ const App: React.FC = () => {
                 <div className="space-y-4 h-full flex flex-col">
                   <div className="flex justify-between items-center">
                     <p className="text-sm text-amber-100/80">
-                      Ce code utilise maintenant votre <strong>premier onglet</strong> (quel que soit son nom) :
+                      Ce code utilise maintenant votre <strong>premier onglet</strong> (quel que
+                      soit son nom) :
                     </p>
                     <button
                       onClick={() => copyToClipboard(GOOGLE_SCRIPT_TEMPLATE)}
@@ -907,7 +1034,6 @@ const App: React.FC = () => {
           /* Editor View */
           <div className="max-w-[1600px] mx-auto p-4 md:p-8 w-full">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-
               {/* Left: Stats & Saved Cards (3 cols) */}
               <div className="lg:col-span-3 order-3 lg:order-1">
                 <div className="bg-amber-100 rounded-lg shadow border border-amber-200 overflow-hidden sticky top-32 h-[calc(100vh-160px)]">
@@ -922,14 +1048,18 @@ const App: React.FC = () => {
               {/* Center: Preview (4 cols) */}
               <div className="lg:col-span-4 order-1 lg:order-2 lg:sticky lg:top-32">
                 <div className="bg-white rounded-lg shadow-xl overflow-hidden border-2 border-amber-900/10">
-                  <div className="bg-gray-50 border-b p-2 text-center text-xs text-gray-500 font-mono uppercase">Aperçu de la Carte</div>
+                  <div className="bg-gray-50 border-b p-2 text-center text-xs text-gray-500 font-mono uppercase">
+                    Aperçu de la Carte
+                  </div>
                   {(() => {
-                    const idx = savedCards.findIndex(c => c.id === cardData.id);
-                    return <CardPreview
-                      data={cardData}
-                      index={idx !== -1 ? idx : undefined}
-                      globalSettings={globalSettings}
-                    />;
+                    const idx = savedCards.findIndex((c) => c.id === cardData.id);
+                    return (
+                      <CardPreview
+                        data={cardData}
+                        index={idx !== -1 ? idx : undefined}
+                        globalSettings={globalSettings}
+                      />
+                    );
                   })()}
                 </div>
               </div>

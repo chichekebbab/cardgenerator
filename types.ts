@@ -1,4 +1,3 @@
-
 export enum CardType {
   MONSTER = 'Monstre',
   CURSE = 'Malédiction',
@@ -10,7 +9,7 @@ export enum CardType {
   DUNGEON_TRAP = 'Piège Donjon',
   DUNGEON_BONUS = 'Bonus Donjon',
   TREASURE_TRAP = 'Piège Trésor',
-  OTHER = 'Autre'
+  OTHER = 'Autre',
 }
 
 export type CardLayout = 'standard';
@@ -61,7 +60,8 @@ export const INITIAL_CARD_DATA: CardData = {
   description: 'Elle met le bazar sur le tapis.',
   badStuff: 'Perdez votre Couvre-chef et 2 Niveaux.',
   gold: '3 Trésors',
-  imagePrePrompt: "Génère une illustration au format carré (1x1). Le style artistique doit imiter parfaitement celui du jeu de cartes 'Munchkin' et du dessinateur John Kovalic : un style cartoon satirique, dessiné à la main, avec des contours noirs épais et une ambiance humoristique de fantasy. L'image doit présenter un seul élément isolé, centré. Il ne doit y avoir absolument aucun texte sur l'image. Le fond doit être une couleur unie, neutre et simple, sans aucun décor ni détail. Voici l'élément à générer :",
+  imagePrePrompt:
+    "Génère une illustration au format carré (1x1). Le style artistique doit imiter parfaitement celui du jeu de cartes 'Munchkin' et du dessinateur John Kovalic : un style cartoon satirique, dessiné à la main, avec des contours noirs épais et une ambiance humoristique de fantasy. L'image doit présenter un seul élément isolé, centré. Il ne doit y avoir absolument aucun texte sur l'image. Le fond doit être une couleur unie, neutre et simple, sans aucun décor ni détail. Voici l'élément à générer :",
   imagePrompt: 'Un monstre de dessin animé drôle fait de spaghettis',
   imageData: null,
   itemSlot: '',
@@ -92,6 +92,14 @@ export interface GlobalSettings {
 }
 
 export const AVAILABLE_FONTS = [
+  'Windlass',
+  'IM Fell English SC',
+  'Rye',
+  'Metamorphous',
+  'Caslon Antique',
+  'IM Fell DW Pica',
+  'IM Fell English',
+  'MedievalSharp',
   'Cinzel',
   'Pirata One',
   'EB Garamond',
@@ -107,9 +115,9 @@ export const AVAILABLE_FONTS = [
 export const DEFAULT_GLOBAL_SETTINGS: GlobalSettings = {
   customBackDonjon: null,
   customBackTresor: null,
-  fontTitle: 'Cinzel',
-  fontDescription: 'EB Garamond',
-  fontMeta: 'Inter',
+  fontTitle: 'Windlass',
+  fontDescription: 'Caslon Antique',
+  fontMeta: 'MedievalSharp',
   language: 'fr',
   defaultImagePrePrompt: INITIAL_CARD_DATA.imagePrePrompt,
 };
