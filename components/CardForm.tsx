@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CardData, CardType, CardLayout } from '../types';
+import { CardData, CardType, CardLayout, GlobalSettings } from '../types';
 import { generateCardArt, generateCardSuggestion } from '../services/geminiService';
 import { removeBackground, removeBackgroundFromUrl, hasDefaultRemoveBgKey } from '../services/removeBgService';
 import { useNotification } from './NotificationContext';
@@ -19,12 +19,13 @@ interface CardFormProps {
 
   removeBgApiKey?: string; // remove.bg API key
   geminiApiKey?: string; // New: Gemini API key
+  globalSettings: GlobalSettings;
 }
 
 // Pré-prompt technique imposé (ne change jamais)
 const FIXED_PRE_PROMPT = "Génère une illustration au format carré (1x1). Le style artistique doit imiter parfaitement celui du jeu de cartes 'Munchkin' et du dessinateur John Kovalic : un style cartoon satirique, dessiné à la main, avec des contours noirs épais et une ambiance humoristique de fantasy. L'image doit présenter un seul élément isolé, centré. Il ne doit y avoir absolument aucun texte sur l'image. Le fond doit être une couleur unie, neutre et simple, sans aucun décor ni détail. Voici l'élément à générer :";
 
-const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, onDuplicate, onDelete, isSaving, hasScriptUrl, hasUnsavedChanges, onImport, removeBgApiKey, geminiApiKey }) => {
+const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, onDuplicate, onDelete, isSaving, hasScriptUrl, hasUnsavedChanges, onImport, removeBgApiKey, geminiApiKey, globalSettings }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSuggesting, setIsSuggesting] = useState(false); // New: suggestion state
   const [suggestionInput, setSuggestionInput] = useState(""); // New: suggestion input
@@ -46,15 +47,14 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
     setError(null);
 
     try {
-      // On utilise le FIXED_PRE_PROMPT quoi qu'il arrive, en ignorant la DB
-      const fullPrompt = `${FIXED_PRE_PROMPT} ${cardData.imagePrompt}`;
+      const prePrompt = globalSettings.defaultImagePrePrompt;
+      const fullPrompt = `${prePrompt} ${cardData.imagePrompt}`;
       const base64Image = await generateCardArt(fullPrompt, geminiApiKey);
-      // On sauvegarde l'image et on garde le pré-prompt technique dans les data pour info (même s'il n'est plus éditable)
       onChange({
         ...cardData,
         imageData: base64Image,
         storedImageUrl: undefined,
-        imagePrePrompt: FIXED_PRE_PROMPT
+        imagePrePrompt: prePrompt
       });
     } catch (err) {
       setError("Échec de la génération de l'image. Veuillez réessayer.");
@@ -724,7 +724,9 @@ const CardForm: React.FC<CardFormProps> = ({ cardData, onChange, onSave, onNew, 
 
         {cardData.type === CardType.MONSTER && (
           <div>
-            <label className="block text-sm font-medium text-red-700 mb-1">Incident Fâcheux</label>
+            <label className="block text-sm font-medium text-red-700 mb-1">
+              {globalSettings.language === 'en' ? 'Bad Stuff' : 'Incident Fâcheux'}
+            </label>
             <textarea
               value={cardData.badStuff || ''}
               onChange={(e) => handleChange('badStuff', e.target.value)}

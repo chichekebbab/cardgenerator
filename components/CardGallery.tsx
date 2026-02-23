@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import ReactDOM from 'react-dom';
-import { CardData, CardType, PlaceholderCardData } from '../types';
+import { CardData, CardType, PlaceholderCardData, GlobalSettings } from '../types';
 import CardThumbnail from './CardThumbnail';
 import BatchExportRenderer from './BatchExportRenderer';
 import BatchPdfExportRenderer from './BatchPdfExportRenderer';
@@ -15,6 +15,7 @@ interface CardGalleryProps {
   isLoading: boolean;
   selectedCardId?: string;
   targetTotal?: number;
+  globalSettings: GlobalSettings;
 }
 
 
@@ -70,6 +71,7 @@ const CardGallery: React.FC<CardGalleryProps> = ({
   isLoading,
   selectedCardId,
   targetTotal = 350,
+  globalSettings,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [collapsedSections, setCollapsedSections] = useState<Set<CardType>>(new Set());
@@ -858,6 +860,7 @@ const CardGallery: React.FC<CardGalleryProps> = ({
                 setExportProgress({ current, total });
                 if (chunkInfo) setExportChunkInfo(chunkInfo);
               }}
+              globalSettings={globalSettings}
             />
           </>
         )
@@ -912,6 +915,7 @@ const CardGallery: React.FC<CardGalleryProps> = ({
                 setExportProgress({ current, total });
                 if (chunkInfo) setExportChunkInfo(chunkInfo);
               }}
+              globalSettings={globalSettings}
             />
           </>
         )

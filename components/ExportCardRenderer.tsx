@@ -1,5 +1,5 @@
 import React, { forwardRef, useRef, useState, useEffect } from 'react';
-import { CardData, CardType } from '../types';
+import { CardData, CardType, GlobalSettings } from '../types';
 import { formatBonus } from '../utils/layoutUtils';
 import { formatGoldDisplay } from '../utils/goldFormatter';
 
@@ -7,13 +7,14 @@ interface ExportCardRendererProps {
     data: CardData;
     layoutSrc: string;
     descriptionFontSize?: number;
+    globalSettings?: GlobalSettings;
 }
 
 // Dimensions natives des layouts
 const REF_WIDTH = 661;
 const REF_HEIGHT = 1028;
 
-const ExportCardRenderer = forwardRef<HTMLDivElement, ExportCardRendererProps>(({ data, layoutSrc, descriptionFontSize: externalFontSize }, ref) => {
+const ExportCardRenderer = forwardRef<HTMLDivElement, ExportCardRendererProps>(({ data, layoutSrc, descriptionFontSize: externalFontSize, globalSettings }, ref) => {
 
     // Internal text fitter for when no external font size is provided (e.g. batch export)
     const descContainerRef = useRef<HTMLDivElement>(null);
@@ -85,6 +86,22 @@ const ExportCardRenderer = forwardRef<HTMLDivElement, ExportCardRendererProps>((
         }
     }
 
+    // --- HELPERS TRADUCTION ---
+    const translateItemSlot = (slot: string) => {
+        if (globalSettings?.language !== 'en') return slot;
+        const map: Record<string, string> = {
+            '1 Main': '1 Hand',
+            '2 Mains': '2 Hands',
+            'Couvre-chef': 'Headgear',
+            'Chaussures': 'Footgear',
+            'Armure': 'Armor',
+            'Monture': 'Steed',
+            'Amélioration': 'Enhancement',
+            'Amélioration de Monture': 'Steed Enhancement',
+        };
+        return map[slot] || slot;
+    };
+
     return (
         <div
             ref={ref}
@@ -124,15 +141,23 @@ const ExportCardRenderer = forwardRef<HTMLDivElement, ExportCardRendererProps>((
                         <>
                             <div className="absolute pointer-events-none z-30"
                                 style={{ left: `${108 - leftOffset}px`, top: `${119 + topOffset}px` }}>
-                                <span className={`font-munchkin-title ${fontWeight} text-white text-shadow-strong leading-none block transform -translate-x-1/2 -translate-y-1/2`}
-                                    style={{ fontSize }}>
+                                <span className={`text-white text-shadow-strong leading-none block transform -translate-x-1/2 -translate-y-1/2`}
+                                    style={{
+                                        fontSize,
+                                        fontFamily: globalSettings?.fontMeta || 'Cinzel',
+                                        fontWeight: isRange ? 'normal' : 'bold'
+                                    }}>
                                     {diamond.value}
                                 </span>
                             </div>
                             <div className="absolute pointer-events-none z-30"
                                 style={{ left: `${550 - leftOffset}px`, top: `${119 + topOffset}px` }}>
-                                <span className={`font-munchkin-title ${fontWeight} text-white text-shadow-strong leading-none block transform -translate-x-1/2 -translate-y-1/2`}
-                                    style={{ fontSize }}>
+                                <span className={`text-white text-shadow-strong leading-none block transform -translate-x-1/2 -translate-y-1/2`}
+                                    style={{
+                                        fontSize,
+                                        fontFamily: globalSettings?.fontMeta || 'Cinzel',
+                                        fontWeight: isRange ? 'normal' : 'bold'
+                                    }}>
                                     {diamond.value}
                                 </span>
                             </div>
@@ -147,8 +172,11 @@ const ExportCardRenderer = forwardRef<HTMLDivElement, ExportCardRendererProps>((
                         top: `${data.type === CardType.CLASS || data.type === CardType.RACE ? 133 + 25 : 133}px`,
                         width: '319px'
                     }}>
-                    <h2 className="font-munchkin-title font-bold uppercase tracking-wide text-[#5C1B15] leading-[1.15] break-words"
-                        style={{ fontSize: '2.2rem' }}>
+                    <h2 className="font-bold uppercase tracking-wide text-[#5C1B15] leading-[1.15] break-words"
+                        style={{
+                            fontSize: '2.2rem',
+                            fontFamily: globalSettings?.fontTitle || 'Cinzel'
+                        }}>
                         {data.title}
                     </h2>
                 </div>
@@ -178,8 +206,12 @@ const ExportCardRenderer = forwardRef<HTMLDivElement, ExportCardRendererProps>((
                                     background: 'radial-gradient(ellipse at center, transparent 40%, rgba(0, 0, 0, 0.35) 100%)'
                                 }}
                             />
-                            <div className="export-description-text relative w-full text-center font-munchkin-body font-medium text-black p-4"
-                                style={{ fontSize: `${descriptionFontSize}px`, lineHeight: '1.1' }}>
+                            <div className="export-description-text relative w-full text-center font-medium text-black p-4"
+                                style={{
+                                    fontSize: `${descriptionFontSize}px`,
+                                    lineHeight: '1.1',
+                                    fontFamily: globalSettings?.fontDescription || 'EB Garamond'
+                                }}>
                                 {data.restrictions && (
                                     <div className="font-bold uppercase mb-2">{data.restrictions}</div>
                                 )}
@@ -187,7 +219,7 @@ const ExportCardRenderer = forwardRef<HTMLDivElement, ExportCardRendererProps>((
 
                                 {(data.type === CardType.MONSTER && data.badStuff) && (
                                     <div className="mt-3 text-left border-t-2 border-black/20 pt-2" style={{ width: '100%' }}>
-                                        <span className="font-bold">Incident Fâcheux : </span>
+                                        <span className="font-bold">{globalSettings?.language === 'en' ? 'Bad Stuff: ' : 'Incident Fâcheux : '}</span>
                                         <span className="italic">{data.badStuff}</span>
                                     </div>
                                 )}
@@ -221,35 +253,50 @@ const ExportCardRenderer = forwardRef<HTMLDivElement, ExportCardRendererProps>((
                 <div className="absolute z-30 flex flex-col items-start"
                     style={{ left: '90px', top: '902px' }}>
                     {data.type === CardType.MONSTER && data.levelsGained && data.levelsGained !== 1 && (
-                        <span className="font-medieval font-bold text-[#682A22] whitespace-nowrap"
-                            style={{ fontSize: '1.8rem' }}>
-                            {data.levelsGained} niveaux
+                        <span className="font-bold text-[#682A22] whitespace-nowrap"
+                            style={{
+                                fontSize: '1.8rem',
+                                fontFamily: globalSettings?.fontMeta || 'Inter'
+                            }}>
+                            {data.levelsGained} {globalSettings?.language === 'en' ? 'levels' : 'niveaux'}
                         </span>
                     )}
                     {data.type === CardType.ITEM && (
                         <div className="relative">
                             {data.isBig && (
-                                <span className="font-medieval font-bold text-[#682A22] whitespace-nowrap absolute bottom-full left-0 mb-[-0.2rem]"
-                                    style={{ fontSize: '1.8rem' }}>
-                                    Gros
+                                <span className="font-bold text-[#682A22] whitespace-nowrap absolute bottom-full left-0 mb-[-0.2rem]"
+                                    style={{
+                                        fontSize: '1.8rem',
+                                        fontFamily: globalSettings?.fontMeta || 'Inter'
+                                    }}>
+                                    {globalSettings?.language === 'en' ? 'Big' : 'Gros'}
                                 </span>
                             )}
                             {data.itemSlot === 'Amélioration de Monture' ? (
                                 <>
-                                    <span className="font-medieval font-bold text-[#682A22] whitespace-nowrap absolute bottom-full left-0 mb-[-0.2rem]"
-                                        style={{ fontSize: '1.8rem' }}>
-                                        Amélioration
+                                    <span className="font-bold text-[#682A22] whitespace-nowrap absolute bottom-full left-0 mb-[-0.2rem]"
+                                        style={{
+                                            fontSize: '1.8rem',
+                                            fontFamily: globalSettings?.fontMeta || 'Inter'
+                                        }}>
+                                        {globalSettings?.language === 'en' ? 'Enhancement' : 'Amélioration'}
                                     </span>
-                                    <span className="font-medieval font-bold text-[#682A22] whitespace-nowrap block"
-                                        style={{ fontSize: '1.8rem' }}>
-                                        de Monture
+                                    <span className="font-bold text-[#682A22] whitespace-nowrap block"
+                                        style={{
+                                            fontSize: '1.8rem',
+                                            fontFamily: globalSettings?.fontMeta || 'Inter'
+                                        }}>
+                                        {globalSettings?.language === 'en' ? 'for Steed' : 'de Monture'}
                                     </span>
                                 </>
                             ) : (
                                 data.itemSlot && data.itemSlot !== 'NoSlot' && data.itemSlot !== 'Amélioration' ? (
-                                    <span className="font-medieval font-bold text-[#682A22] whitespace-nowrap block"
-                                        style={{ fontSize: data.itemSlot.length > 15 ? '1.4rem' : '1.8rem' }}>
-                                        {data.itemSlot}
+                                    <span className="font-bold text-[#682A22] whitespace-nowrap block"
+                                        style={{
+                                            fontSize: data.itemSlot.length > 15 ? '1.4rem' : '1.8rem',
+                                            fontFamily: globalSettings?.fontMeta || 'Inter'
+                                        }}>
+                                        {translateItemSlot(data.itemSlot)}
                                     </span>
                                 ) : <div style={{ height: '1.8rem' }} />
                             )}
@@ -259,7 +306,7 @@ const ExportCardRenderer = forwardRef<HTMLDivElement, ExportCardRendererProps>((
 
                 {/* FOOTER DROIT : Trésor / Or - Type-specific display */}
                 {(() => {
-                    const formattedGold = formatGoldDisplay(data.type, data.gold);
+                    const formattedGold = formatGoldDisplay(data.type, data.gold, globalSettings?.language || 'fr');
 
                     // Don't display if formatGoldDisplay returns null (Curse, Race, Class, Level_Up, Faithful_Servant)
                     // Also don't display for Item with Amélioration slot
@@ -275,8 +322,11 @@ const ExportCardRenderer = forwardRef<HTMLDivElement, ExportCardRendererProps>((
                     return (
                         <div className="absolute z-30"
                             style={{ left: leftPosition, top: '902px' }}>
-                            <span className="font-medieval font-bold text-[#682A22] whitespace-nowrap block"
-                                style={{ fontSize: '1.8rem' }}>
+                            <span className="font-bold text-[#682A22] whitespace-nowrap block"
+                                style={{
+                                    fontSize: '1.8rem',
+                                    fontFamily: globalSettings?.fontMeta || 'Inter'
+                                }}>
                                 {formattedGold}
                             </span>
                         </div>

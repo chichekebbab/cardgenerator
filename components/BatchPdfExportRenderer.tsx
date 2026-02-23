@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { CardData } from '../types';
+import { CardData, GlobalSettings } from '../types';
 import ExportCardRenderer from './ExportCardRenderer';
 import { getLayoutFilename, getCardCategory } from '../utils/layoutUtils';
 import { toJpeg, getFontEmbedCSS } from 'html-to-image';
@@ -8,6 +8,7 @@ import { useNotification } from './NotificationContext';
 
 interface BatchPdfExportRendererProps {
     cards: CardData[];
+    globalSettings: GlobalSettings;
     onComplete: () => void;
     onProgress: (current: number, total: number, chunkInfo?: { chunk: number; totalChunks: number }) => void;
 }
@@ -34,7 +35,7 @@ const COLOR_BG_FACE = "#0d0804";
 const COLOR_BG_BACK_TRESOR = "#051471";
 const COLOR_BG_BACK_DONJON = "#0d0804";
 
-const BatchPdfExportRenderer: React.FC<BatchPdfExportRendererProps> = ({ cards, onComplete, onProgress }) => {
+const BatchPdfExportRenderer: React.FC<BatchPdfExportRendererProps> = ({ cards, globalSettings, onComplete, onProgress }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
     const exportRef = useRef<HTMLDivElement>(null);
     const pdfRef = useRef<jsPDF | null>(null);
@@ -100,15 +101,20 @@ const BatchPdfExportRenderer: React.FC<BatchPdfExportRendererProps> = ({ cards, 
 
         const loadResources = async () => {
             try {
-                const donjonBack = await loadImage('/layouts/layout_back_donjon.png');
-                const tresorBack = await loadImage('/layouts/layout_back_tresors.png');
+                const donjonBack = globalSettings.customBackDonjon
+                    ? globalSettings.customBackDonjon
+                    : await loadImage('/layouts/layout_back_donjon.png');
+
+                const tresorBack = globalSettings.customBackTresor
+                    ? globalSettings.customBackTresor
+                    : await loadImage('/layouts/layout_back_tresors.png');
 
                 backImagesRef.current = {
                     'Donjon': donjonBack,
                     'Tresor': tresorBack
                 };
 
-                const uniqueLayouts = new Set(cards.map(c => `layouts/${getLayoutFilename(c)}`));
+                const uniqueLayouts = new Set<string>(cards.map(c => `layouts/${getLayoutFilename(c)}`));
                 uniqueLayouts.add('/texture/texture_description.png');
 
                 const preloadPromises: Promise<void>[] = [];
@@ -118,7 +124,7 @@ const BatchPdfExportRenderer: React.FC<BatchPdfExportRendererProps> = ({ cards, 
                         img.crossOrigin = 'anonymous';
                         img.onload = () => resolve();
                         img.onerror = () => resolve();
-                        img.src = src;
+                        img.src = src as string;
                     });
                     preloadPromises.push(p);
                 });
@@ -337,6 +343,7 @@ const BatchPdfExportRenderer: React.FC<BatchPdfExportRendererProps> = ({ cards, 
                 ref={exportRef}
                 data={currentCard}
                 layoutSrc={`layouts/${getLayoutFilename(currentCard)}`}
+                globalSettings={globalSettings}
             />
         </div>
     );

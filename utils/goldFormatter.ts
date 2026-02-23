@@ -21,12 +21,13 @@ export function extractGoldValue(goldString: string | undefined): number | null 
 }
 
 /**
- * Formats the gold value based on card type
+ * Formats the gold value based on card type and language
  * Returns null if the field should not be displayed for this card type
  */
 export function formatGoldDisplay(
     cardType: CardType,
-    goldValue: string | undefined
+    goldValue: string | undefined,
+    language: 'fr' | 'en' = 'fr'
 ): string | null {
     // These card types should never display the gold field
     if (
@@ -49,12 +50,18 @@ export function formatGoldDisplay(
 
     // Format based on card type
     if (cardType === CardType.MONSTER) {
+        if (language === 'en') {
+            return `${numericValue} treasure${numericValue > 1 ? 's' : ''}`;
+        }
         return `${numericValue} trésor${numericValue > 1 ? 's' : ''}`;
     }
 
     if (cardType === CardType.ITEM) {
         if (numericValue === 0) {
-            return 'Aucune valeur';
+            return language === 'en' ? 'No value' : 'Aucune valeur';
+        }
+        if (language === 'en') {
+            return `${numericValue} gold piece${numericValue > 1 ? 's' : ''}`;
         }
         return `${numericValue} pièce${numericValue > 1 ? 's' : ''} d'or`;
     }

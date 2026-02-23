@@ -4,11 +4,12 @@ import CardPreview from './components/CardPreview';
 import DeckStats from './components/DeckStats';
 import CardGallery from './components/CardGallery';
 import CardList from './components/CardList';
+import GlobalSettingsComponent from './components/GlobalSettings';
 import ImportModal from './components/ImportModal';
 import LegalModal from './components/LegalModal';
 import Footer from './components/Footer';
 import CardNavigation from './components/CardNavigation';
-import { CardData, INITIAL_CARD_DATA } from './types';
+import { CardData, INITIAL_CARD_DATA, GlobalSettings, DEFAULT_GLOBAL_SETTINGS } from './types';
 import { saveCardToSheet, fetchCardsFromSheet, deleteCardFromSheet } from './services/sheetService';
 import { useNotification } from './components/NotificationContext';
 
@@ -174,7 +175,8 @@ const App: React.FC = () => {
   const [geminiApiKey, setGeminiApiKey] = useState<string>(""); // New: Gemini API key
   const [showSettings, setShowSettings] = useState(false);
   const [activeTab, setActiveTab] = useState<'config' | 'code'>('config'); // Nouvel état pour les onglets modal settings
-  const [activeView, setActiveView] = useState<'editor' | 'gallery' | 'list'>('editor'); // Nouvel état pour la navigation principale
+  const [activeView, setActiveView] = useState<'editor' | 'gallery' | 'list' | 'settings'>('editor'); // Ajout de 'settings'
+  const [globalSettings, setGlobalSettings] = useState<GlobalSettings>(DEFAULT_GLOBAL_SETTINGS);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingList, setIsLoadingList] = useState(false);
   const [configError, setConfigError] = useState<string | null>(null);
@@ -213,7 +215,51 @@ const App: React.FC = () => {
         setTargetTotal(parsed);
       }
     }
+
+    const savedGlobalSettings = localStorage.getItem('global_settings');
+    if (savedGlobalSettings) {
+      try {
+        setGlobalSettings(JSON.parse(savedGlobalSettings));
+      } catch (e) {
+        console.error("Erreur chargement global settings", e);
+      }
+    }
   }, []);
+
+  const handleGlobalSettingsChange = (newSettings: GlobalSettings) => {
+    setGlobalSettings(newSettings);
+    localStorage.setItem('global_settings', JSON.stringify(newSettings));
+  };
+
+  // Inject Google Fonts whenever font settings change
+  useEffect(() => {
+    const fonts = [
+      globalSettings.fontTitle,
+      globalSettings.fontDescription,
+      globalSettings.fontMeta,
+    ];
+    // Deduplicate
+    const uniqueFonts = [...new Set(fonts)];
+    const families = uniqueFonts
+      .map(f => `family=${encodeURIComponent(f)}:wght@400;700`)
+      .join('&');
+    const href = `https://fonts.googleapis.com/css2?${families}&display=swap`;
+
+    // Replace or create the link tag
+    let link = document.getElementById('dynamic-google-fonts') as HTMLLinkElement | null;
+    if (!link) {
+      link = document.createElement('link');
+      link.id = 'dynamic-google-fonts';
+      link.rel = 'stylesheet';
+      document.head.appendChild(link);
+    }
+    link.href = href;
+  }, [globalSettings.fontTitle, globalSettings.fontDescription, globalSettings.fontMeta]);
+
+  const handleResetGlobalSettings = () => {
+    setGlobalSettings(DEFAULT_GLOBAL_SETTINGS);
+    localStorage.removeItem('global_settings');
+  };
 
   const handleTargetTotalChange = (newTarget: number) => {
     setTargetTotal(newTarget);
@@ -397,7 +443,11 @@ const App: React.FC = () => {
   };
 
   const handleNewCard = (initialData?: Partial<CardData>) => {
-    const baseCard = { ...INITIAL_CARD_DATA, id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString() };
+    const baseCard = {
+      ...INITIAL_CARD_DATA,
+      id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(),
+      imagePrePrompt: globalSettings.defaultImagePrePrompt // Use custom pre-prompt
+    };
     setCardData(initialData ? { ...baseCard, ...initialData } : baseCard);
     setActiveView('editor'); // Switch to editor when creating new card
     setHasUnsavedChanges(false); // New card has no changes yet
@@ -665,6 +715,16 @@ const App: React.FC = () => {
               <span>📋</span>
               Liste
             </button>
+            <button
+              onClick={() => setActiveView('settings')}
+              className={`px-6 py-2 font-bold text-sm rounded-t-lg transition-all flex items-center gap-2 ${activeView === 'settings'
+                ? 'bg-stone-100 text-amber-900 shadow-sm'
+                : 'bg-amber-800/50 text-amber-200 hover:bg-amber-800 hover:text-white'
+                }`}
+            >
+              <span>⚙️</span>
+              Paramètres
+            </button>
           </nav>
         </div>
       </header>
@@ -865,7 +925,11 @@ const App: React.FC = () => {
                   <div className="bg-gray-50 border-b p-2 text-center text-xs text-gray-500 font-mono uppercase">Aperçu de la Carte</div>
                   {(() => {
                     const idx = savedCards.findIndex(c => c.id === cardData.id);
-                    return <CardPreview data={cardData} index={idx !== -1 ? idx : undefined} />;
+                    return <CardPreview
+                      data={cardData}
+                      index={idx !== -1 ? idx : undefined}
+                      globalSettings={globalSettings}
+                    />;
                   })()}
                 </div>
               </div>
@@ -896,6 +960,7 @@ const App: React.FC = () => {
                   hasUnsavedChanges={hasUnsavedChanges}
                   removeBgApiKey={removeBgApiKey}
                   geminiApiKey={geminiApiKey}
+                  globalSettings={globalSettings}
                 />
               </div>
             </div>
@@ -909,8 +974,9 @@ const App: React.FC = () => {
             isLoading={isLoadingList}
             targetTotal={targetTotal}
             selectedCardId={cardData.id}
+            globalSettings={globalSettings}
           />
-        ) : (
+        ) : activeView === 'list' ? (
           /* List View */
           <CardList
             cards={savedCards}
@@ -918,6 +984,13 @@ const App: React.FC = () => {
             onUpdateCard={handleQuickUpdateCard}
             saveStatus={listSaveStatus}
             isLoading={isLoadingList}
+          />
+        ) : (
+          /* Settings View */
+          <GlobalSettingsComponent
+            settings={globalSettings}
+            onChange={handleGlobalSettingsChange}
+            onResetToDefaults={handleResetGlobalSettings}
           />
         )}
       </main>

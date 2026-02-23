@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { CardData, CardType } from '../types';
+import { CardData, CardType, GlobalSettings } from '../types';
 import { toPng } from 'html-to-image';
 import ExportCardRenderer from './ExportCardRenderer';
 import { useNotification } from './NotificationContext';
@@ -9,9 +9,10 @@ import { formatGoldDisplay } from '../utils/goldFormatter';
 interface CardPreviewProps {
     data: CardData;
     index?: number;
+    globalSettings?: GlobalSettings;
 }
 
-const CardPreview: React.FC<CardPreviewProps> = ({ data, index }) => {
+const CardPreview: React.FC<CardPreviewProps> = ({ data, index, globalSettings }) => {
     const cardRef = useRef<HTMLDivElement>(null);
     const exportRef = useRef<HTMLDivElement>(null);
     const [isDownloading, setIsDownloading] = useState(false);
@@ -238,52 +239,49 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data, index }) => {
     // Helper pour les infos des losanges
     const getDiamondInfo = () => {
         const baseStyle = "diamond-style";
+        const lang = globalSettings?.language || 'fr';
+        const levelLabel = lang === 'fr' ? 'NIVEAU' : 'LEVEL';
+        const bonusLabel = 'BONUS';
 
         switch (data.type) {
             case CardType.MONSTER:
                 return {
                     style: baseStyle,
-                    label: 'NIVEAU',
+                    label: levelLabel,
                     value: data.level,
                     textColor: 'text-white'
                 };
             case CardType.ITEM:
-                return {
-                    style: baseStyle,
-                    label: 'BONUS',
-                    value: formatBonus(data.bonus),
-                    textColor: 'text-white'
-                };
-            case CardType.CURSE:
-                return { style: baseStyle, label: '', value: '', textColor: 'text-white' };
-            case CardType.CLASS:
-                return { style: baseStyle, label: '', value: '', textColor: 'text-white' };
             case CardType.LEVEL_UP:
-                return {
-                    style: baseStyle,
-                    label: 'BONUS',
-                    value: formatBonus(data.bonus),
-                    textColor: 'text-white'
-                };
             case CardType.FAITHFUL_SERVANT:
-                return {
-                    style: baseStyle,
-                    label: 'BONUS',
-                    value: formatBonus(data.bonus),
-                    textColor: 'text-white'
-                };
             case CardType.DUNGEON_TRAP:
             case CardType.DUNGEON_BONUS:
             case CardType.TREASURE_TRAP:
                 return {
                     style: baseStyle,
-                    label: 'BONUS',
+                    label: bonusLabel,
                     value: formatBonus(data.bonus),
                     textColor: 'text-white'
                 };
             default:
                 return { style: baseStyle, label: '', value: '', textColor: 'text-white' };
         }
+    };
+
+    // --- HELPERS TRADUCTION ---
+    const translateItemSlot = (slot: string) => {
+        if (globalSettings?.language !== 'en') return slot;
+        const map: Record<string, string> = {
+            '1 Main': '1 Hand',
+            '2 Mains': '2 Hands',
+            'Couvre-chef': 'Headgear',
+            'Chaussures': 'Footgear',
+            'Armure': 'Armor',
+            'Monture': 'Steed',
+            'Amélioration': 'Enhancement',
+            'Amélioration de Monture': 'Steed Enhancement',
+        };
+        return map[slot] || slot;
     };
 
     // --- RENDU : TYPE 1 (NOUVEAUX LAYOUTS PNG) ---
@@ -346,8 +344,12 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data, index }) => {
                                         left: scaleX(108 - leftOffset),
                                         top: scaleY(119 + topOffset),
                                     }}>
-                                    <span className={`font-munchkin-title ${fontWeight} text-white text-shadow-strong leading-none block transform -translate-x-1/2 -translate-y-1/2`}
-                                        style={{ fontSize }}>
+                                    <span className={`text-white text-shadow-strong leading-none block transform -translate-x-1/2 -translate-y-1/2`}
+                                        style={{
+                                            fontSize,
+                                            fontFamily: globalSettings?.fontMeta || 'Cinzel',
+                                            fontWeight: isRange ? 'normal' : 'bold'
+                                        }}>
                                         {diamond.value}
                                     </span>
                                 </div>
@@ -356,8 +358,12 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data, index }) => {
                                         left: scaleX(550 - leftOffset),
                                         top: scaleY(119 + topOffset),
                                     }}>
-                                    <span className={`font-munchkin-title ${fontWeight} text-white text-shadow-strong leading-none block transform -translate-x-1/2 -translate-y-1/2`}
-                                        style={{ fontSize }}>
+                                    <span className={`text-white text-shadow-strong leading-none block transform -translate-x-1/2 -translate-y-1/2`}
+                                        style={{
+                                            fontSize,
+                                            fontFamily: globalSettings?.fontMeta || 'Cinzel',
+                                            fontWeight: isRange ? 'normal' : 'bold'
+                                        }}>
                                         {diamond.value}
                                     </span>
                                 </div>
@@ -373,8 +379,11 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data, index }) => {
                             top: scaleY(data.type === CardType.CLASS || data.type === CardType.RACE ? 133 + 25 : 133),
                             width: scaleX(488 - 169),
                         }}>
-                        <h2 className="font-munchkin-title font-bold uppercase tracking-wide text-[#5C1B15] leading-[1.15] break-words"
-                            style={{ fontSize: '1.1rem' }}>
+                        <h2 className="font-bold uppercase tracking-wide text-[#5C1B15] leading-[1.15] break-words"
+                            style={{
+                                fontSize: '1.1rem',
+                                fontFamily: globalSettings?.fontTitle || 'Cinzel'
+                            }}>
                             {data.title}
                         </h2>
                     </div>
@@ -404,8 +413,12 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data, index }) => {
                                         background: 'radial-gradient(ellipse at center, transparent 40%, rgba(0, 0, 0, 0.35) 100%)'
                                     }}
                                 />
-                                <div className="description-text-content relative w-full text-center font-munchkin-body font-medium text-black p-2"
-                                    style={{ fontSize: `${descriptionFontSize}px`, lineHeight: '1.1' }}>
+                                <div className="description-text-content relative w-full text-center font-medium text-black p-2"
+                                    style={{
+                                        fontSize: `${descriptionFontSize}px`,
+                                        lineHeight: '1.1',
+                                        fontFamily: globalSettings?.fontDescription || 'EB Garamond'
+                                    }}>
                                     {data.restrictions && (
                                         <div className="font-bold uppercase mb-1">{data.restrictions}</div>
                                     )}
@@ -413,7 +426,7 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data, index }) => {
                                     {/* Affichage de l'Incident Fâcheux ou Effect si applicable */}
                                     {(data.type === CardType.MONSTER && data.badStuff) && (
                                         <div className="mt-2 text-left border-t border-black/20 pt-1">
-                                            <span className="font-bold">Incident Fâcheux : </span>
+                                            <span className="font-bold">{globalSettings?.language === 'en' ? 'Bad Stuff: ' : 'Incident Fâcheux : '}</span>
                                             <span className="italic">{data.badStuff}</span>
                                         </div>
                                     )}
@@ -440,36 +453,51 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data, index }) => {
                         style={{ left: scaleX(90), top: scaleY(908) }}>
 
                         {data.type === CardType.MONSTER && data.levelsGained && data.levelsGained !== 1 && (
-                            <span className="font-medieval font-bold text-[#682A22] whitespace-nowrap"
-                                style={{ fontSize: '0.9rem' }}>
-                                {data.levelsGained} niveaux
+                            <span className="font-bold text-[#682A22] whitespace-nowrap"
+                                style={{
+                                    fontSize: '0.9rem',
+                                    fontFamily: globalSettings?.fontMeta || 'Inter'
+                                }}>
+                                {data.levelsGained} {globalSettings?.language === 'en' ? 'levels' : 'niveaux'}
                             </span>
                         )}
 
                         {data.type === CardType.ITEM && (
                             <div className="relative">
                                 {data.isBig && (
-                                    <span className="font-medieval font-bold text-[#682A22] whitespace-nowrap absolute bottom-full left-0 mb-[-0.1rem]"
-                                        style={{ fontSize: '0.9rem' }}>
-                                        Gros
+                                    <span className="font-bold text-[#682A22] whitespace-nowrap absolute bottom-full left-0 mb-[-0.1rem]"
+                                        style={{
+                                            fontSize: '0.9rem',
+                                            fontFamily: globalSettings?.fontMeta || 'Inter'
+                                        }}>
+                                        {globalSettings?.language === 'en' ? 'Big' : 'Gros'}
                                     </span>
                                 )}
                                 {data.itemSlot === 'Amélioration de Monture' ? (
                                     <>
-                                        <span className="font-medieval font-bold text-[#682A22] whitespace-nowrap absolute bottom-full left-0 mb-[-0.1rem]"
-                                            style={{ fontSize: '0.9rem' }}>
-                                            Amélioration
+                                        <span className="font-bold text-[#682A22] whitespace-nowrap absolute bottom-full left-0 mb-[-0.1rem]"
+                                            style={{
+                                                fontSize: '0.9rem',
+                                                fontFamily: globalSettings?.fontMeta || 'Inter'
+                                            }}>
+                                            {translateItemSlot('Amélioration')}
                                         </span>
-                                        <span className="font-medieval font-bold text-[#682A22] whitespace-nowrap block"
-                                            style={{ fontSize: '0.9rem' }}>
-                                            de Monture
+                                        <span className="font-bold text-[#682A22] whitespace-nowrap block"
+                                            style={{
+                                                fontSize: '0.9rem',
+                                                fontFamily: globalSettings?.fontMeta || 'Inter'
+                                            }}>
+                                            {globalSettings?.language === 'en' ? 'for Steed' : 'de Monture'}
                                         </span>
                                     </>
                                 ) : (
                                     data.itemSlot && data.itemSlot !== 'NoSlot' && data.itemSlot !== 'Amélioration' ? (
-                                        <span className="font-medieval font-bold text-[#682A22] whitespace-nowrap block"
-                                            style={{ fontSize: data.itemSlot.length > 15 ? '0.7rem' : '0.9rem' }}>
-                                            {data.itemSlot}
+                                        <span className="font-bold text-[#682A22] whitespace-nowrap block"
+                                            style={{
+                                                fontSize: data.itemSlot.length > 15 ? '0.7rem' : '0.9rem',
+                                                fontFamily: globalSettings?.fontMeta || 'Inter'
+                                            }}>
+                                            {translateItemSlot(data.itemSlot)}
                                         </span>
                                     ) : (
                                         /* Espace réservé pour maintenir la position si pas de slot */
@@ -482,7 +510,7 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data, index }) => {
 
                     {/* COIN DROIT : Trésor / Or - Type-specific display */}
                     {(() => {
-                        const formattedGold = formatGoldDisplay(data.type, data.gold);
+                        const formattedGold = formatGoldDisplay(data.type, data.gold, globalSettings?.language || 'fr');
 
                         // Don't display if formatGoldDisplay returns null (Curse, Race, Class, Level_Up, Faithful_Servant)
                         // Also don't display for Item with Amélioration slot
@@ -498,8 +526,11 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data, index }) => {
                         return (
                             <div className="absolute z-30 flex flex-col items-start"
                                 style={{ left: leftPosition, top: scaleY(908) }}>
-                                <span className="font-medieval font-bold text-[#682A22] whitespace-nowrap block"
-                                    style={{ fontSize: '0.9rem' }}>
+                                <span className="font-bold text-[#682A22] whitespace-nowrap block"
+                                    style={{
+                                        fontSize: '0.9rem',
+                                        fontFamily: globalSettings?.fontMeta || 'Inter'
+                                    }}>
                                     {formattedGold}
                                 </span>
                             </div>
@@ -548,6 +579,7 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data, index }) => {
                         data={data}
                         layoutSrc={layoutSrc}
                         descriptionFontSize={descriptionFontSize * 2}
+                        globalSettings={globalSettings}
                     />
                 </div>
             )}

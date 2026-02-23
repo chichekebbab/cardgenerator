@@ -76,3 +76,40 @@ export const INITIAL_CARD_DATA: CardData = {
   isValidated: false,
   internalComment: '',
 };
+
+export interface GlobalSettings {
+  // Custom card backs (base64 data URL or null = use default)
+  customBackDonjon: string | null;
+  customBackTresor: string | null;
+  // Fonts per text type (Google Fonts family names)
+  fontTitle: string;
+  fontDescription: string;
+  fontMeta: string;
+  // Language for automatic labels
+  language: 'fr' | 'en';
+  // Default pre-prompt for AI image generation
+  defaultImagePrePrompt: string;
+}
+
+export const AVAILABLE_FONTS = [
+  'Cinzel',
+  'Pirata One',
+  'EB Garamond',
+  'Lora',
+  'Merriweather',
+  'Inter',
+  'Roboto',
+  'Outfit',
+  'Playfair Display',
+  'Spectral',
+] as const;
+
+export const DEFAULT_GLOBAL_SETTINGS: GlobalSettings = {
+  customBackDonjon: null,
+  customBackTresor: null,
+  fontTitle: 'Cinzel',
+  fontDescription: 'EB Garamond',
+  fontMeta: 'Inter',
+  language: 'fr',
+  defaultImagePrePrompt: INITIAL_CARD_DATA.imagePrePrompt,
+};

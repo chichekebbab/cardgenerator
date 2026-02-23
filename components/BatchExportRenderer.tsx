@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { CardData } from '../types';
+import { CardData, GlobalSettings } from '../types';
 import ExportCardRenderer from './ExportCardRenderer';
 import { getLayoutFilename, getExportFilename } from '../utils/layoutUtils';
 import { toPng, getFontEmbedCSS } from 'html-to-image';
@@ -8,6 +8,7 @@ import { useNotification } from './NotificationContext';
 
 interface BatchExportRendererProps {
     cards: CardData[];
+    globalSettings: GlobalSettings;
     onComplete: () => void;
     onProgress: (current: number, total: number, chunkInfo?: { chunk: number; totalChunks: number }) => void;
 }
@@ -89,7 +90,7 @@ function waitForImages(container: HTMLElement, timeoutMs = 5000): Promise<void> 
     });
 }
 
-const BatchExportRenderer: React.FC<BatchExportRendererProps> = ({ cards, onComplete, onProgress }) => {
+const BatchExportRenderer: React.FC<BatchExportRendererProps> = ({ cards, globalSettings, onComplete, onProgress }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
     const exportRef = useRef<HTMLDivElement>(null);
     const zipRef = useRef<JSZip>(new JSZip());
@@ -117,7 +118,7 @@ const BatchExportRenderer: React.FC<BatchExportRendererProps> = ({ cards, onComp
         successCountRef.current = 0;
 
         // Pre-cache layout images
-        const uniqueLayouts = new Set(cards.map(c => `layouts/${getLayoutFilename(c)}`));
+        const uniqueLayouts = new Set<string>(cards.map(c => `layouts/${getLayoutFilename(c)}`));
         uniqueLayouts.add('/texture/texture_description.png');
         const preloadPromises: Promise<void>[] = [];
 
@@ -130,7 +131,7 @@ const BatchExportRenderer: React.FC<BatchExportRendererProps> = ({ cards, onComp
                     console.warn(`[Export] Failed to preload layout: ${src}`);
                     resolve();
                 };
-                img.src = src;
+                img.src = src as string;
             });
             preloadPromises.push(p);
         });
@@ -325,6 +326,7 @@ const BatchExportRenderer: React.FC<BatchExportRendererProps> = ({ cards, onComp
                 ref={exportRef}
                 data={currentCard}
                 layoutSrc={layoutSrc}
+                globalSettings={globalSettings}
             />
         </div>
     );
