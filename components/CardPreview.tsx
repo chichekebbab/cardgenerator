@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { CardData, CardType, GlobalSettings } from '../types';
-import { toPng } from 'html-to-image';
+import { toPng, getFontEmbedCSS } from 'html-to-image';
 import ExportCardRenderer from './ExportCardRenderer';
 import { useNotification } from './NotificationContext';
 import { getExportFilename, formatBonus, getLayoutSource } from '../utils/layoutUtils';
@@ -19,6 +19,7 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data, index, globalSettings }
   const exportRef = useRef<HTMLDivElement>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const { showNotification } = useNotification();
+  const fontCSSCacheRef = useRef<string | undefined>(undefined);
 
   // States pour l'image centrale (Art)
   const [imgError, setImgError] = useState(false);
@@ -161,6 +162,27 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data, index, globalSettings }
   };
 
   const handleDownload = async () => {
+    // Step 1: Pre-cache the art image as a data URL from the already-loaded preview.
+    // This avoids rate-limit (429) errors when html-to-image re-fetches Google Drive URLs.
+    let cachedArtDataUrl: string | undefined;
+    if (displaySrc && !data.imageData) {
+      const previewImg = cardRef.current?.querySelector('img[alt="Art"]') as HTMLImageElement;
+      if (previewImg?.complete && previewImg.naturalWidth > 0) {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = previewImg.naturalWidth;
+          canvas.height = previewImg.naturalHeight;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(previewImg, 0, 0);
+            cachedArtDataUrl = canvas.toDataURL('image/png');
+          }
+        } catch {
+          console.warn('[Download] Could not pre-cache art image (CORS tainted canvas)');
+        }
+      }
+    }
+
     setIsDownloading(true);
 
     try {
@@ -172,10 +194,85 @@ const CardPreview: React.FC<CardPreviewProps> = ({ data, index, globalSettings }
         return;
       }
 
-      // Utiliser html-to-image qui gère mieux les CSS transforms
+      // Replace external image URLs in the export renderer with cached data URLs
+      // to avoid re-fetch issues (429 rate limiting from Google Drive, CORS, etc.)
+      if (cachedArtDataUrl) {
+        const exportArtImg = exportRef.current.querySelector('img[alt="Art"]') as HTMLImageElement;
+        if (exportArtImg && !exportArtImg.src.startsWith('data:image')) {
+          exportArtImg.src = cachedArtDataUrl;
+        }
+      }
+
+      // Wait for all images in the export container to be fully loaded (layout, textures, art)
+      await new Promise<void>((resolve) => {
+        const images = exportRef.current!.querySelectorAll('img');
+        let pending = 0;
+        let resolved = false;
+
+        const done = () => {
+          if (resolved) return;
+          resolved = true;
+          resolve();
+        };
+
+        // Timeout: don't wait forever for images that may never load
+        const timeout = setTimeout(() => {
+          if (!resolved) {
+            console.warn('[Download] Image loading timeout, proceeding with export');
+            done();
+          }
+        }, 5000);
+
+        images.forEach((img) => {
+          if (img.complete && img.naturalWidth > 0) return; // Already loaded
+          pending++;
+          const onFinish = () => {
+            pending--;
+            if (pending <= 0) {
+              clearTimeout(timeout);
+              done();
+            }
+          };
+          img.addEventListener('load', onFinish, { once: true });
+          img.addEventListener(
+            'error',
+            () => {
+              console.warn('[Download] Image failed to load:', img.src?.substring(0, 80));
+              onFinish();
+            },
+            { once: true },
+          );
+        });
+
+        // If all images were already loaded
+        if (pending === 0) {
+          clearTimeout(timeout);
+          done();
+        }
+      });
+
+      if (!exportRef.current) return;
+
+      // Pre-compute font CSS to avoid cross-origin cssRules access errors
+      // (Google Fonts stylesheets are cross-origin and cannot be read by html-to-image)
+      if (fontCSSCacheRef.current === undefined) {
+        try {
+          const fontPromise = getFontEmbedCSS(exportRef.current);
+          const timeoutPromise = new Promise<string>((_, reject) =>
+            setTimeout(() => reject(new Error('Font CSS timeout after 5s')), 5000),
+          );
+          fontCSSCacheRef.current = await Promise.race([fontPromise, timeoutPromise]);
+        } catch (e) {
+          console.warn('[Download] Font CSS computation failed, using empty fallback:', e);
+          fontCSSCacheRef.current = '';
+        }
+      }
+
+      // Utiliser html-to-image avec fontEmbedCSS pour éviter les erreurs CORS
       const dataUrl = await toPng(exportRef.current, {
         quality: 1.0,
         pixelRatio: 1,
+        fontEmbedCSS: fontCSSCacheRef.current,
       });
 
       const filename = getExportFilename(data, index);

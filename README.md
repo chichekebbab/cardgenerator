@@ -18,7 +18,7 @@
 <!-- TODO: Add screenshots of the editor, a generated card, and the gallery view -->
 <!-- Example: ![Editor](docs/screenshots/editor.png) -->
 
-*Screenshots coming soon — or [try the live demo](https://niveau10.ovh)!*
+_Screenshots coming soon — or [try the live demo](https://niveau10.ovh)!_
 
 ---
 
@@ -27,9 +27,11 @@
 - 🎨 **AI Image Generation** — Google Gemini creates unique card artwork
 - ✂️ **Background Removal** — Remove.bg integration for clean card images
 - 🃏 **Multiple Card Types** — Monsters, Treasures, Curses, Dungeon Bonuses, and more
+- 🖼️ **Custom Layouts** — Upload and use your own custom card layouts
 - 📊 **Deck Management** — Organize cards by category, track your progress
-- 💾 **Import/Export** — CSV/JSON import, batch PNG/PDF export
-- 🎯 **Live Preview** — See your changes as you type
+- 💾 **Import/Export** — CSV/JSON import, optimized batch PNG export, and BAT (Board A4 Tiled) PDF export
+- 🎯 **Live Preview & Demo** — See your changes as you type, and preview global settings on a live demo card
+- 🌍 **Multilingual** — Full support for English and French, covering both the user interface and card content
 - 📱 **Responsive** — Works on desktop, tablet, and mobile
 
 ---
@@ -59,13 +61,13 @@ The app works without any API keys. To enable AI features:
 
 ## 🛠️ Tech Stack
 
-| | |
-|---|---|
-| **Frontend** | React 19 + TypeScript |
-| **Build** | Vite 6 |
-| **Styling** | Tailwind CSS |
-| **AI** | Google Gemini API |
-| **Export** | html-to-image, JSZip, jsPDF |
+|              |                             |
+| ------------ | --------------------------- |
+| **Frontend** | React 19 + TypeScript       |
+| **Build**    | Vite 6                      |
+| **Styling**  | Tailwind CSS                |
+| **AI**       | Google Gemini API           |
+| **Export**   | html-to-image, JSZip, jsPDF |
 
 ---
 

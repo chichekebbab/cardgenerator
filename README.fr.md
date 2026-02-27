@@ -19,10 +19,11 @@ Un générateur de cartes Munchkin personnalisées avec intelligence artificiell
 - 🎨 **Génération d'images par IA** : Utilisez Google Gemini pour générer des images uniques
 - ✂️ **Suppression d'arrière-plan** : Intégration de l'API Remove.bg pour des images professionnelles
 - 🃏 **Types de cartes variés** : Monstres, Trésors, Malédictions, Bonus Donjon, et plus
+- 🖼️ **Designs personnalisés** : Importez et utilisez vos propres designs de cartes (layouts)
 - 📊 **Gestion de deck** : Organisez vos cartes par catégories et suivez votre progression
-- 💾 **Import/Export** : Importez depuis CSV/JSON et exportez en masse vos cartes
-- 🎯 **Aperçu en temps réel** : Visualisez vos modifications instantanément
-- 🌐 **Interface française** : Application entièrement en français
+- 💾 **Import/Export optimisé** : Import CSV/JSON, export PNG en masse optimisé, et export PDF BAT (Bon À Tirer A4 Tiled)
+- 🎯 **Aperçu en temps réel & Démo** : Visualisez vos modifications instantanément et testez vos paramètres globaux sur une carte de démonstration
+- 🌍 **Multilingue** : Support complet du français et de l'anglais, pour l'interface utilisateur ainsi que pour le contenu des cartes
 - 📱 **Responsive** : Fonctionne sur desktop, tablette et mobile
 
 ---
