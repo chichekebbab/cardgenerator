@@ -1,8 +1,8 @@
 export const fr = {
   app: {
-    title: 'MunchkinGen',
+    title: 'Niveau10',
     subtitle:
-      'Complétez votre jeu avec vos propres cartes, ou construisez votre deck entièrement !',
+      'Complétez votre jeu Munchkin avec vos propres cartes, ou construisez votre deck entièrement !',
     configDb: 'Configuration Base de Données',
     editor: 'Éditeur',
     gallery: 'Galerie',

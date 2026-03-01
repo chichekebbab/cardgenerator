@@ -2,8 +2,9 @@ import { TranslationDictionary } from './fr';
 
 export const en: TranslationDictionary = {
   app: {
-    title: 'MunchkinGen',
-    subtitle: 'Complete your game with your own cards, or build your entire deck from scratch!',
+    title: 'Niveau10',
+    subtitle:
+      'Complete your Munchkin game with your own cards, or build your entire deck from scratch!',
     configDb: 'Database Configuration',
     editor: 'Editor',
     gallery: 'Gallery',
